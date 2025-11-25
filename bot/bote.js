@@ -3,7 +3,8 @@ require("dotenv").config({ path: "../.env" });
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
-bot.on("message", (msg) => {
+// Команда /start
+bot.onText(/\/start/, (msg) => {
     const chatId = msg.chat.id;
 
     bot.sendMessage(chatId, "Добро пожаловать в CryptoCats!", {
@@ -12,10 +13,12 @@ bot.on("message", (msg) => {
                 [
                     {
                         text: "Играть 🎮",
-                        web_app: { url: process.env.WEBAPP_URL } 
+                        url: process.env.WEBAPP_URL
                     }
                 ]
             ]
         }
     });
 });
+
+console.log("Bot is running...");
