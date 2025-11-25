@@ -1,91 +1,86 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>CryptoCats</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #222;
-            font-family: Arial, sans-serif;
-            color: #fff;
-        }
-
-        .cat-img {
-            width: 100%;
-            max-width: 400px;
-            height: auto;
-            margin-top: 20px;
-            border-radius: 20px;
-            box-shadow: 0 0 20px #000;
-        }
-
-        .play-btn {
-            width: 80%;
-            max-width: 300px;
-            padding: 20px;
-            font-size: 20px;
-            margin-bottom: 10px;
-            cursor: pointer;
-            border: none;
-            border-radius: 15px;
-            background-color: #ffcc00;
-            color: #222;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            transition: transform 0.2s;
-        }
-        .play-btn:hover {
-            transform: scale(1.05);
-        }
-
-        .bottom-buttons {
-            display: flex;
-            width: 100%;
-            justify-content: space-around;
-            margin-bottom: 0;
-        }
-        .bottom-buttons button {
-            flex: 1;
-            padding: 20px 0;
-            font-size: 18px;
-            border: none;
-            background-color: #ffcc00;
-            color: #222;
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            transition: transform 0.2s;
-        }
-        .bottom-buttons button:hover {
-            transform: scale(1.05);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CryptoCats WebApp</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background-color: #1e1e1e;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+    #content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    #content img {
+        max-width: 80%;
+        height: auto;
+        margin-bottom: 20px;
+        border-radius: 10px;
+    }
+    .buttons {
+        display: flex;
+        justify-content: space-around;
+        background-color: #222;
+    }
+    .buttons button {
+        flex: 1;
+        padding: 15px 0;
+        font-size: 18px;
+        border: none;
+        background-color: #333;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .buttons button:hover {
+        background-color: #555;
+    }
+</style>
 </head>
 <body>
-    <!-- Картинка кота -->
-    <img src="https://placekitten.com/400/300" alt="CryptoCat" class="cat-img">
 
-    <!-- Кнопка Играть -->
-    <button class="play-btn" onclick="window.open('https://t.me/ТВОЙ_БОТ', '_blank')">Играть 🎮</button>
+<div id="content">
+    <img src="https://placekitten.com/400/300" alt="Кот CryptoCats">
+    <h2>Добро пожаловать в CryptoCats!</h2>
+</div>
 
-    <!-- Нижние кнопки -->
-    <div class="bottom-buttons">
-        <button onclick="alert('Добро пожаловать в Город!')">🏰<br>Город</button>
-        <button>🛒<br>Магазин</button>
-        <button>🐱<br>Герои</button>
-        <button>⚔️<br>Юниты</button>
-    </div>
+<div class="buttons">
+    <button onclick="goToMain()">Главное меню</button>
+    <button onclick="showCity()">Город</button>
+    <button onclick="alert('Магазин пока не готов')">Магазин</button>
+    <button onclick="alert('Герои пока не готовы')">Герои</button>
+</div>
+
+<script>
+function goToMain() {
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <img src="https://placekitten.com/400/300" alt="Кот CryptoCats">
+        <h2>Добро пожаловать в CryptoCats!</h2>
+    `;
+}
+
+function showCity() {
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <img src="https://placekitten.com/300/200" alt="Главный офис">
+        <h2>Добро пожаловать в Город!</h2>
+        <p>Главный офис</p>
+    `;
+}
+</script>
+
 </body>
 </html>
