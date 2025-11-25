@@ -1,86 +1,108 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CryptoCats WebApp</title>
-<style>
-    body {
-        margin: 0;
-        padding: 0;
-        font-family: Arial, sans-serif;
-        background-color: #1e1e1e;
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-    }
-    #content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-    }
-    #content img {
-        max-width: 80%;
-        height: auto;
-        margin-bottom: 20px;
-        border-radius: 10px;
-    }
-    .buttons {
-        display: flex;
-        justify-content: space-around;
-        background-color: #222;
-    }
-    .buttons button {
-        flex: 1;
-        padding: 15px 0;
-        font-size: 18px;
-        border: none;
-        background-color: #333;
-        color: #fff;
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-    .buttons button:hover {
-        background-color: #555;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoCats</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #000;
+        }
+
+        #mainContent {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
+        #mainContent img {
+            max-width: 80%;
+            max-height: 80%;
+        }
+
+        #menu {
+            display: flex;
+            width: 100%;
+            background-color: #222;
+        }
+
+        .menu-btn {
+            flex: 1;
+            padding: 15px 0;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border-top: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .menu-btn img {
+            width: 30px;
+            height: 30px;
+            margin-bottom: 5px;
+        }
+
+        .menu-btn:hover {
+            background-color: #444;
+        }
+    </style>
 </head>
 <body>
+    <div id="mainContent">
+        <img id="mainCat" src="images/main_cat.png" alt="Кот CryptoCats">
+    </div>
 
-<div id="content">
-    <img src="https://placekitten.com/400/300" alt="Кот CryptoCats">
-    <h2>Добро пожаловать в CryptoCats!</h2>
-</div>
+    <div id="menu">
+        <div class="menu-btn" id="cityBtn">
+            <img src="images/city_icon.png" alt="Город">
+            Город
+        </div>
+        <div class="menu-btn" id="shopBtn">
+            <img src="images/shop_icon.png" alt="Магазин">
+            Магазин
+        </div>
+        <div class="menu-btn" id="heroesBtn">
+            <img src="images/heroes_icon.png" alt="Герои">
+            Герои
+        </div>
+        <div class="menu-btn" id="unitsBtn">
+            <img src="images/units_icon.png" alt="Юниты">
+            Юниты
+        </div>
+    </div>
 
-<div class="buttons">
-    <button onclick="goToMain()">Главное меню</button>
-    <button onclick="showCity()">Город</button>
-    <button onclick="alert('Магазин пока не готов')">Магазин</button>
-    <button onclick="alert('Герои пока не готовы')">Герои</button>
-</div>
+    <script>
+        const mainContent = document.getElementById('mainContent');
+        const cityBtn = document.getElementById('cityBtn');
 
-<script>
-function goToMain() {
-    const content = document.getElementById('content');
-    content.innerHTML = `
-        <img src="https://placekitten.com/400/300" alt="Кот CryptoCats">
-        <h2>Добро пожаловать в CryptoCats!</h2>
-    `;
-}
+        cityBtn.addEventListener('click', () => {
+            // Меняем содержимое при заходе в город
+            mainContent.innerHTML = `
+                <div style="text-align:center; color:white;">
+                    <h2>Добро пожаловать в Город!</h2>
+                    <img src="images/city_building.png" alt="Главный офис" style="max-width:60%; margin-top:20px;">
+                </div>
+            `;
+        });
 
-function showCity() {
-    const content = document.getElementById('content');
-    content.innerHTML = `
-        <img src="https://placekitten.com/300/200" alt="Главный офис">
-        <h2>Добро пожаловать в Город!</h2>
-        <p>Главный офис</p>
-    `;
-}
-</script>
-
+        // Тут можно аналогично добавить обработчики для других кнопок
+    </script>
 </body>
 </html>
