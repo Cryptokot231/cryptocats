@@ -3,60 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <title>CryptoCats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
             margin: 0;
             height: 100vh;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            justify-content: space-between;
             align-items: center;
             background-color: #222;
             font-family: Arial, sans-serif;
             color: #fff;
-            flex-direction: column;
         }
-        img {
-            width: 300px;
+
+        /* Картинка кота сверху */
+        .cat-img {
+            width: 100%;
+            max-width: 400px;
             height: auto;
-            margin-bottom: 30px;
+            margin-top: 20px;
             border-radius: 20px;
             box-shadow: 0 0 20px #000;
         }
-        .buttons {
-            display: flex;
-            gap: 20px;
-        }
-        button {
-            padding: 15px 20px;
-            font-size: 16px;
+
+        /* Кнопка Играть */
+        .play-btn {
+            width: 80%;
+            max-width: 300px;
+            padding: 20px;
+            font-size: 20px;
+            margin-bottom: 10px;
             cursor: pointer;
             border: none;
-            border-radius: 10px;
+            border-radius: 15px;
             background-color: #ffcc00;
             color: #222;
             display: flex;
+            justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             transition: transform 0.2s;
         }
-        button:hover {
+        .play-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* Нижняя панель кнопок */
+        .bottom-buttons {
+            display: flex;
+            width: 100%;
+            justify-content: space-around;
+            margin-bottom: 0;
+        }
+        .bottom-buttons button {
+            flex: 1;
+            padding: 20px 0;
+            font-size: 18px;
+            border: none;
+            background-color: #ffcc00;
+            color: #222;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: transform 0.2s;
+        }
+        .bottom-buttons button:hover {
             transform: scale(1.05);
         }
     </style>
 </head>
 <body>
     <!-- Картинка кота -->
-    <img src="https://i.imgur.com/O3R1s2R.png" alt="CryptoCat">
+    <img src="https://i.imgur.com/w3duR07.png" alt="CryptoCat" class="cat-img">
 
-    <!-- Кнопка Играть (открывает бота в Telegram) -->
-    <button onclick="window.open('https://t.me/ТВОЙ_БОТ', '_blank')">Играть 🎮</button>
+    <!-- Кнопка Играть -->
+    <button class="play-btn" onclick="window.open('https://t.me/ТВОЙ_БОТ', '_blank')">Играть 🎮</button>
 
-    <!-- Нижние кнопки: Город, Магазин, Герои, Юниты -->
-    <div class="buttons">
-        <button onclick="alert('Город!')">🏰 Город</button>
-        <button onclick="alert('Магазин!')">🛒 Магазин</button>
-        <button onclick="alert('Герои!')">🐱 Герои</button>
-        <button onclick="alert('Юниты!')">⚔️ Юниты</button>
+    <!-- Нижние кнопки -->
+    <div class="bottom-buttons">
+        <button onclick="alert('Город!')">🏰<br>Город</button>
+        <button onclick="alert('Магазин!')">🛒<br>Магазин</button>
+        <button onclick="alert('Герои!')">🐱<br>Герои</button>
+        <button onclick="alert('Юниты!')">⚔️<br>Юниты</button>
     </div>
 </body>
 </html>
