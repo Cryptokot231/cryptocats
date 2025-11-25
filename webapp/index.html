@@ -18,16 +18,25 @@
         img {
             width: 300px;
             height: auto;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 20px #000;
+        }
+        .buttons {
+            display: flex;
+            gap: 20px;
         }
         button {
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 15px 20px;
+            font-size: 16px;
             cursor: pointer;
             border: none;
             border-radius: 10px;
             background-color: #ffcc00;
             color: #222;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             transition: transform 0.2s;
         }
         button:hover {
@@ -36,7 +45,18 @@
     </style>
 </head>
 <body>
+    <!-- Картинка кота -->
     <img src="https://i.imgur.com/O3R1s2R.png" alt="CryptoCat">
+
+    <!-- Кнопка Играть (открывает бота в Telegram) -->
     <button onclick="window.open('https://t.me/ТВОЙ_БОТ', '_blank')">Играть 🎮</button>
+
+    <!-- Нижние кнопки: Город, Магазин, Герои, Юниты -->
+    <div class="buttons">
+        <button onclick="alert('Город!')">🏰 Город</button>
+        <button onclick="alert('Магазин!')">🛒 Магазин</button>
+        <button onclick="alert('Герои!')">🐱 Герои</button>
+        <button onclick="alert('Юниты!')">⚔️ Юниты</button>
+    </div>
 </body>
 </html>
