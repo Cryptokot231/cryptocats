@@ -2,73 +2,78 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto Cats Game</title>
-    <!-- Подключение Telegram Web App API -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключение PixiJS v7 -->
-    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js"></script>
     <style>
+        /* Общие стили для сброса и центрирования */
         body {
             margin: 0;
             padding: 0;
-            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #1a1a2e; /* Цвет фона, совпадающий с настройками Pixi */
-            color: #ffffff;
-            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            background-color: #1a1a2e; /* Цвет фона, как в игре */
+            overflow: hidden; /* Скрыть скроллбары */
         }
         canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            touch-action: none; /* Отключаем стандартные действия браузера при касании */
+            display: block; /* Убираем нижний отступ */
+            border: 1px solid #333; /* Небольшая рамка для видимости */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            /* Убедитесь, что размер холста адаптируется к размеру игры (1080x1920) */
+            max-width: 100vw;
+            max-height: 100vh;
+            width: auto;
+            height: auto;
         }
+
+        /* Стили для экрана загрузки */
         #loading-screen {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: #1a1a2e;
+            color: #fff;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            flex-direction: column;
-            z-index: 100;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            z-index: 1000;
         }
-        .loader {
-            border: 8px solid #3d3d5c;
-            border-top: 8px solid #ff0077; 
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.1);
+            border-top: 8px solid #FFD700;
             border-radius: 50%;
             width: 60px;
             height: 60px;
-            animation: spin 2s linear infinite;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        #loading-text {
-            margin-top: 20px;
-            font-size: 18px;
-        }
     </style>
+    
+    <!-- Telegram WebApp SDK для запуска в Telegram -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <div id="loading-text">Загрузка ресурсов...</div>
-    </div>
     
-    <!-- Основной скрипт игры -->
+    <!-- Экран загрузки. Скрывается в main.js после инициализации. -->
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        Загрузка ресурсов...
+    </div>
+
+    <!-- 1. PIXI.js ДОЛЖЕН БЫТЬ ЗАГРУЖЕН ПЕРВЫМ И БЕЗ TYPE="MODULE" -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js"></script>
+
+    <!-- 2. Основной скрипт игры (main.js) загружается вторым, уже зная о PIXI -->
     <script type="module" src="main.js"></script>
-</body>
-</html>
-        // Тут можно аналогично добавить обработчики для других кнопок
-    </script>
 </body>
 </html>
