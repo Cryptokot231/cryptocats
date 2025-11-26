@@ -39,11 +39,11 @@
     <div id="pixi-container"></div> 
 
     <!-- ШАГ 1: Загрузка PIXI.js из CDN с помощью тега <script> -->
-    <!-- Это решает проблему 404, связанную с модульным импортом в некоторых средах. -->
+    <!-- Этот скрипт выполнится первым и сделает PIXI доступным глобально. -->
     <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js"></script>
 
     <!-- ШАГ 2: Загрузка основного скрипта main.js -->
-    <!-- Теперь main.js может использовать глобальную переменную PIXI -->
-    <script type="module" src="main.js"></script>
+    <!-- ВАЖНО: Убран type="module", чтобы он загружался синхронно, после PIXI.js. -->
+    <script src="main.js"></script>
 </body>
 </html>
