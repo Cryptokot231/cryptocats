@@ -3,13 +3,12 @@ import * as PIXI from 'https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pix
 // --- КОНФИГУРАЦИЯ РЕСУРСОВ И ИНИЦИАЛИЗАЦИЯ ---
 
 // 1. Правильное указание путей к ресурсам
-// Используйте имена файлов из вашего скриншота, включая unnamed.jpg как фон с сеткой
 const ASSETS = {
-    // Фоны
-    bg_space: { alias: 'bg_space', src: 'webapp-images/bg_space.png' }, // Старый фон 
-    bg_grid: { alias: 'bg_grid', src: 'webapp-images/unnamed.jpg' }, // Новый фон с синей сеткой
+    // Фон главного меню / карты. Использование map_background
+    // Внимание: Если ваш файл map_background имеет расширение .jpg, измените src ниже.
+    map_background: { alias: 'map_background', src: 'webapp-images/map_background.png' }, 
     
-    // Здания (новые имена, как вы указали)
+    // Здания (Подтвержденные имена файлов)
     building_center: { alias: 'building_center', src: 'webapp-images/building_center.png' },
     building_hq: { alias: 'building_hq', src: 'webapp-images/building_hq.png' }, 
     building_lab: { alias: 'building_lab', src: 'webapp-images/building_lab.png' }, 
@@ -17,9 +16,9 @@ const ASSETS = {
     building_tank: { alias: 'building_tank', src: 'webapp-images/building_tank.png' }, 
 
     // Иконки UI и ресурсов
-    icon_power_cat: { alias: 'icon_power_cat', src: 'webapp-images/icon_power_cat.png' }, // Иконка кота для power
-    icon_close: { alias: 'icon_close', src: 'webapp-images/icon_close.png' }, // Иконка "X"
-    settings_icon: { alias: 'settings_icon', src: 'webapp-images/settings_icon.png' }, // Иконка настроек/меню
+    icon_power_cat: { alias: 'icon_power_cat', src: 'webapp-images/icon_power_cat.png' }, 
+    icon_close: { alias: 'icon_close', src: 'webapp-images/icon_close.png' }, 
+    settings_icon: { alias: 'settings_icon', src: 'webapp-images/settings_icon.png' }, 
 
     // Иконки ресурсов (5 иконок)
     icon_res_coin: { alias: 'icon_res_coin', src: 'webapp-images/icon_res_coin.png' },
@@ -36,12 +35,12 @@ const ASSETS = {
 };
 
 // Размеры приложения
-const APP_WIDTH = 720; // Оптимальный размер для мобильного портрета (как на скриншоте)
-const APP_HEIGHT = 1280; // (как на скриншоте)
+const APP_WIDTH = 720; 
+const APP_HEIGHT = 1280; 
 
 // Инициализация приложения PIXI
 const app = new PIXI.Application();
-let SceneManager; // Менеджер сцены будет инициализирован после загрузки
+let SceneManager; 
 
 async function init() {
     // 1. Создание приложения PIXI
@@ -74,7 +73,11 @@ async function init() {
         
     } catch (error) {
         console.error("Ошибка при загрузке ресурсов! Проверьте пути в ASSETS и наличие папки 'webapp-images'.", error);
+        // Если ресурсы не загрузились, отображаем красный текст ошибки
         const errorText = new PIXI.Text('ОШИБКА: Ресурсы не загружены. Проверьте консоль.', { fill: 0xFF0000, fontSize: 30 });
+        errorText.anchor.set(0.5);
+        errorText.x = APP_WIDTH / 2;
+        errorText.y = APP_HEIGHT / 2;
         app.stage.addChild(errorText);
     }
 }
@@ -189,8 +192,8 @@ class BaseScene extends PIXI.Container {
 // --- СЦЕНА: ГЛАВНОЕ МЕНЮ (MainMenuScene) ---
 class MainMenuScene extends BaseScene {
     init() {
-        // 1. Фон (bg_grid - новая синяя сетка)
-        const bgSprite = PIXI.Sprite.from('bg_grid');
+        // 1. Фон (загружаем спрайт map_background)
+        const bgSprite = PIXI.Sprite.from('map_background');
         bgSprite.width = APP_WIDTH;
         bgSprite.height = APP_HEIGHT;
         this.addChild(bgSprite);
@@ -472,7 +475,6 @@ class MainMenuScene extends BaseScene {
 
 
 // --- СЦЕНЫ-ЗАГЛУШКИ (для демонстрации переходов) ---
-// Эти сцены показывают, как легко переключаться между экранами.
 
 class CityScene extends BaseScene {
     init() {
@@ -522,4 +524,4 @@ class HQScene extends BaseScene {
 
 
 // Запускаем инициализацию при загрузке страницы
-window.onload = init;;
+window.onload = init;
