@@ -40,12 +40,25 @@ const ASSETS = {
 const APP_WIDTH = 720; 
 const APP_HEIGHT = 1280; 
 
-// Инициализация приложения PIXI
-const app = new PIXI.Application();
+// Инициализация приложения PIXI (объявляем здесь, но инициализируем внутри init)
+let app;
 let SceneManager; 
 
 async function init() {
+    // Аварийная проверка, если PIXI все еще не загружен
+    if (typeof PIXI === 'undefined') {
+        console.error("КРИТИЧЕСКАЯ ОШИБКА: Объект PIXI не определен. Проверьте index.html!");
+        // Добавляем текст ошибки на экран
+        const container = document.getElementById('pixi-container');
+        if (container) {
+            container.innerHTML = '<h1>Ошибка: PIXI не загружен. Проверьте консоль.</h1>';
+        }
+        return;
+    }
+
     // 1. Создание приложения PIXI
+    app = new PIXI.Application();
+
     await app.init({
         width: APP_WIDTH,
         height: APP_HEIGHT,
@@ -87,6 +100,9 @@ async function init() {
 
 // Функция для адаптивности (масштабирование)
 function resize() {
+    // Проверка, что app уже инициализирован
+    if (!app || !app.canvas) return;
+    
     const parent = app.canvas.parentNode;
     const parentWidth = parent.clientWidth;
     const parentHeight = parent.clientHeight;
