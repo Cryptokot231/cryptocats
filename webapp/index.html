@@ -1,46 +1,45 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoCats Game</title>
-    <!-- Подключаем Tailwind CSS для базовых утилит (хотя PIXI не использует его напрямую, это хорошая практика) -->
+    <title>CryptoCats Defense</title>
+    <!-- Загрузка Tailwind CSS для базового стиля контейнера (необязательно, но помогает) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- Обязательные стили для полноэкранной игры --- */
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden; /* Убирает ненужные полосы прокрутки */
-            background-color: #000; /* Фон страницы на случай, если PIXI не загрузится */
-            font-family: 'Inter', sans-serif;
-        }
-
-        /* Контейнер, который занимает весь экран */
-        #pixi-container {
-            width: 100%;
-            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a1a; /* Темный фон для лучшего контраста */
             display: flex;
             justify-content: center;
             align-items: center;
         }
-
-        /* Canvas, который создаст PIXI.js */
+        /* Стили для контейнера PIXI, чтобы он занимал доступное место */
+        #pixi-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Убедимся, что канвас PIXI центрирован и масштабируется */
         #pixi-container canvas {
+            max-width: 100%;
+            max-height: 100%;
             display: block;
         }
     </style>
 </head>
 <body>
-    <!-- Контейнер, ID которого мы используем в main.js (document.getElementById('pixi-container')) -->
-    <div id="pixi-container">
-        <!-- Здесь будет отображаться ваша игра -->
-    </div>
+    <!-- Контейнер, куда PIXI будет добавлять свой canvas -->
+    <div id="pixi-container"></div> 
 
-    <!-- Загрузка основного JavaScript-кода -->
-    <!-- КРИТИЧЕСКИ ВАЖНО: Путь должен быть 'webapp/main.js' -->
-    <script type="module" src="webapp/main.js"></script>
+    <!-- ГЛАВНАЯ КОРНЕВАЯ ПРОБЛЕМА: Загрузка основного скрипта main.js -->
+    <!-- Убедитесь, что 'main.js' находится в той же папке, что и 'index.html' -->
+    <script type="module" src="main.js"></script>
 </body>
 </html>
