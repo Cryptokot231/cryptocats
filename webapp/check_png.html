@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка Прозрачности PNG</title>
+    <style>
+        body {
+            /* Ярко-красный фон для максимального контраста */
+            background-color: #FF0000; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            padding: 20px;
+            background-color: #333333; /* Темный фон контейнера */
+            border-radius: 10px;
+            text-align: center;
+        }
+        img {
+            max-width: 90%;
+            height: auto;
+            border: 2px dashed #00FFFF; /* Граница, чтобы видеть края изображения */
+            /* Добавим параметр кэша, чтобы наверняка загрузить актуальный файл */
+            content: url('images/building_hq.png?v=20251126e_test');
+        }
+        p {
+            color: white;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Результат Теста Прозрачности</h1>
+        <img id="test-image" src="images/building_hq.png" alt="Тестируемое здание">
+        <p>
+            Если вокруг здания есть БЕЛЫЙ КВАДРАТ, значит, файл images/building_hq.png НЕ ПРОЗРАЧЕН.<br>
+            Если здание ОТОБРАЖАЕТСЯ ПРЯМО НА КРАСНОМ ФОНЕ, значит, он прозрачен.
+        </p>
+    </div>
+</body>
+</html>
