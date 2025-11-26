@@ -1,11 +1,6 @@
-// --- ВАЖНО: Удален 'import * as PIXI from...' 
-// Теперь PIXI доступен как глобальная переменная, загруженная в index.html.
-
 // --- КОНФИГУРАЦИЯ РЕСУРСОВ И ИНИЦИАЛИЗАЦИЯ ---
 
 // 1. Правильное указание путей к ресурсам
-// ПРИМЕЧАНИЕ: Если после этого будет ошибка 404 на изображениях,
-// проверьте имена файлов в папке webapp/images.
 const ASSETS = {
     // Фон главного меню / карты. Использование map_background
     map_background: { alias: 'map_background', src: 'images/map_background.png' }, 
@@ -40,7 +35,7 @@ const ASSETS = {
 const APP_WIDTH = 720; 
 const APP_HEIGHT = 1280; 
 
-// Инициализация приложения PIXI (объявляем здесь, но инициализируем внутри init)
+// Глобальные переменные для PIXI и менеджера сцен
 let app;
 let SceneManager; 
 
@@ -48,7 +43,6 @@ async function init() {
     // Аварийная проверка, если PIXI все еще не загружен
     if (typeof PIXI === 'undefined') {
         console.error("КРИТИЧЕСКАЯ ОШИБКА: Объект PIXI не определен. Проверьте index.html!");
-        // Добавляем текст ошибки на экран
         const container = document.getElementById('pixi-container');
         if (container) {
             container.innerHTML = '<h1>Ошибка: PIXI не загружен. Проверьте консоль.</h1>';
@@ -123,7 +117,9 @@ function resize() {
     app.renderer.resize(APP_WIDTH, APP_HEIGHT);
 }
 
+
 // --- МЕНЕДЖЕР СЦЕН (SCENE MANAGER) ---
+// *Определяется здесь, чтобы избежать ошибок при парсинге*
 
 class SceneController {
     constructor(app) {
