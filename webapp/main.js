@@ -3,35 +3,37 @@ import * as PIXI from 'https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pix
 // --- КОНФИГУРАЦИЯ РЕСУРСОВ И ИНИЦИАЛИЗАЦИЯ ---
 
 // 1. Правильное указание путей к ресурсам
+// ИСПРАВЛЕНО: ПУТИ ИЗМЕНЕНЫ для соответствия существующим именам файлов:
+// 'icon_power_cat.png' -> 'heroes_icon.png'
+// 'icon_close.png' -> 'city_icon.png' (как временная заглушка)
 const ASSETS = {
     // Фон главного меню / карты. Использование map_background
-    // Внимание: Если ваш файл map_background имеет расширение .jpg, измените src ниже.
-    map_background: { alias: 'map_background', src: 'webapp-images/map_background.png' }, 
+    map_background: { alias: 'map_background', src: 'images/map_background.png' }, 
     
     // Здания (Подтвержденные имена файлов)
-    building_center: { alias: 'building_center', src: 'webapp-images/building_center.png' },
-    building_hq: { alias: 'building_hq', src: 'webapp-images/building_hq.png' }, 
-    building_lab: { alias: 'building_lab', src: 'webapp-images/building_lab.png' }, 
-    building_market: { alias: 'building_market', src: 'webapp-images/building_market.png' }, 
-    building_tank: { alias: 'building_tank', src: 'webapp-images/building_tank.png' }, 
+    building_center: { alias: 'building_center', src: 'images/building_center.png' },
+    building_hq: { alias: 'building_hq', src: 'images/building_hq.png' }, 
+    building_lab: { alias: 'building_lab', src: 'images/building_lab.png' }, 
+    building_market: { alias: 'building_market', src: 'images/building_market.png' }, 
+    building_tank: { alias: 'building_tank', src: 'images/building_tank.png' }, 
 
-    // Иконки UI и ресурсов
-    icon_power_cat: { alias: 'icon_power_cat', src: 'webapp-images/icon_power_cat.png' }, 
-    icon_close: { alias: 'icon_close', src: 'webapp-images/icon_close.png' }, 
-    settings_icon: { alias: 'settings_icon', src: 'webapp-images/settings_icon.png' }, 
+    // Иконки UI и ресурсов (ИСПРАВЛЕННЫЕ)
+    icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, // Использован heroes_icon.png
+    icon_close: { alias: 'icon_close', src: 'images/city_icon.png' },          // Использован city_icon.png
+    settings_icon: { alias: 'settings_icon', src: 'images/settings_icon.png' }, 
 
     // Иконки ресурсов (5 иконок)
-    icon_res_coin: { alias: 'icon_res_coin', src: 'webapp-images/icon_res_coin.png' },
-    icon_res_gem: { alias: 'icon_res_gem', src: 'webapp-images/icon_res_gem.png' },
-    icon_res_gold: { alias: 'icon_res_gold', src: 'webapp-images/icon_res_gold.png' },
-    icon_res_energy: { alias: 'icon_res_energy', src: 'webapp-images/icon_res_energy.png' },
-    icon_res_fish: { alias: 'icon_res_fish', src: 'webapp-images/icon_res_fish.png' }, 
+    icon_res_coin: { alias: 'icon_res_coin', src: 'images/icon_res_coin.png' },
+    icon_res_gem: { alias: 'icon_res_gem', src: 'images/icon_res_gem.png' },
+    icon_res_gold: { alias: 'icon_res_gold', src: 'images/icon_res_gold.png' },
+    icon_res_energy: { alias: 'icon_res_energy', src: 'images/icon_res_energy.png' },
+    icon_res_fish: { alias: 'icon_res_fish', src: 'images/icon_res_fish.png' }, 
 
     // Иконки нижней панели
-    icon_build: { alias: 'icon_build', src: 'webapp-images/icon_build.png' }, 
-    icon_train: { alias: 'icon_train', src: 'webapp-images/icon_train.png' },
-    icon_upgrade: { alias: 'icon_upgrade', src: 'webapp-images/icon_upgrade.png' },
-    icon_map: { alias: 'icon_map', src: 'webapp-images/icon_map.png' }, 
+    icon_build: { alias: 'icon_build', src: 'images/icon_build.png' }, 
+    icon_train: { alias: 'icon_train', src: 'images/icon_train.png' },
+    icon_upgrade: { alias: 'icon_upgrade', src: 'images/icon_upgrade.png' },
+    icon_map: { alias: 'icon_map', src: 'images/icon_map.png' }, 
 };
 
 // Размеры приложения
@@ -72,7 +74,8 @@ async function init() {
         SceneManager.changeScene(MainMenuScene); // Запускаем MainMenuScene
         
     } catch (error) {
-        console.error("Ошибка при загрузке ресурсов! Проверьте пути в ASSETS и наличие папки 'webapp-images'.", error);
+        // Убрали webapp/ из пути для удобства (PIXI сам ищет относительно html файла)
+        console.error("ОШИБКА КРИТИЧЕСКАЯ: Не удалось загрузить ресурсы! Проверьте, что имена файлов соответствуют ASSETS.", error);
         // Если ресурсы не загрузились, отображаем красный текст ошибки
         const errorText = new PIXI.Text('ОШИБКА: Ресурсы не загружены. Проверьте консоль.', { fill: 0xFF0000, fontSize: 30 });
         errorText.anchor.set(0.5);
@@ -187,6 +190,32 @@ class BaseScene extends PIXI.Container {
     }
     
     init() {}
+    
+    // Вспомогательная функция для создания простой кнопки
+    createSimpleButton(text, action, color) {
+        const button = new PIXI.Graphics()
+            .rect(-120, -30, 240, 60)
+            .round(15)
+            .fill({ color: color });
+        
+        const label = new PIXI.Text(text, {
+            fontFamily: 'Arial',
+            fontSize: 24,
+            fill: 0x000000,
+            fontWeight: 'bold'
+        });
+        label.anchor.set(0.5);
+        
+        const container = new PIXI.Container();
+        container.addChild(button, label);
+        container.eventMode = 'static';
+        container.cursor = 'pointer';
+        container.on('pointertap', action);
+        container.on('pointerdown', () => container.scale.set(0.95));
+        container.on('pointerup', () => container.scale.set(1.0));
+        container.on('pointerout', () => container.scale.set(1.0));
+        return container;
+    }
 }
 
 // --- СЦЕНА: ГЛАВНОЕ МЕНЮ (MainMenuScene) ---
@@ -206,11 +235,11 @@ class MainMenuScene extends BaseScene {
 
         // 4. Нижняя панель (Build, Train, Upgrade, Map)
         this.addBottomPanel();
-
-        // 5. Дополнительная кнопка для тестирования перехода (можно удалить)
+        
+        // 5. Кнопка для перехода в Город, если это другая сцена
         const goToCityButton = this.createSimpleButton('Перейти в Город', () => this.manager.changeScene(CityScene), 0xFFFFFF);
         goToCityButton.x = APP_WIDTH / 2;
-        goToCityButton.y = APP_HEIGHT - 200; // Позиция для видимости над нижней панелью
+        goToCityButton.y = APP_HEIGHT - 200; 
         this.addChild(goToCityButton);
     }
 
@@ -234,7 +263,7 @@ class MainMenuScene extends BaseScene {
         hq.scale.set(0.6);
         hq.eventMode = 'static';
         hq.cursor = 'pointer';
-        hq.on('pointertap', () => console.log('Нажато HQ'));
+        hq.on('pointertap', () => this.manager.changeScene(HQScene)); // Переход в Штаб
         this.addChild(hq);
 
         // --- Лаборатория (Lab) - Право-верхний ---
@@ -245,7 +274,7 @@ class MainMenuScene extends BaseScene {
         lab.scale.set(0.6);
         lab.eventMode = 'static';
         lab.cursor = 'pointer';
-        lab.on('pointertap', () => console.log('Нажато Lab'));
+        lab.on('pointertap', () => this.manager.changeScene(LabScene)); // Переход в Лабораторию
         this.addChild(lab);
 
         // --- Рынок (Market) - Лево-нижний ---
@@ -269,41 +298,36 @@ class MainMenuScene extends BaseScene {
         tank.cursor = 'pointer';
         tank.on('pointertap', () => console.log('Нажато Tank'));
         this.addChild(tank);
-
-        // TODO: Добавить цифры '1' над зданиями как PIXI.Text или спрайты
     }
 
     addTopUI() {
+        // Используем примерные данные, так как глобальное состояние ресурсов было удалено.
+        const resourceData = [
+            { alias: ASSETS.icon_res_coin.alias, value: 1500 }, 
+            { alias: ASSETS.icon_res_gem.alias, value: 1660 }, 
+            { alias: ASSETS.icon_res_gold.alias, value: 1510 }, 
+            { alias: ASSETS.icon_res_energy.alias, value: 1180 }, 
+            { alias: ASSETS.icon_res_fish.alias, value: 22520 }, 
+        ];
+        
         const topBarHeight = 80;
         const topPanel = new PIXI.Graphics()
             .rect(0, 0, APP_WIDTH, topBarHeight)
-            .fill({ color: 0x1A1A1A, alpha: 0.7 }); // Темный полупрозрачный фон
+            .fill({ color: 0x1A1A1A, alpha: 0.7 });
         topPanel.y = 0;
-        topPanel.zIndex = 10; // Верхний слой
+        topPanel.zIndex = 10; 
         this.addChild(topPanel);
-
-        // --- 5 Ресурсов сверху ---
-        // Значения для примера
-        const resourceData = [
-            { alias: ASSETS.icon_res_coin.alias, value: 1500 }, // Монета
-            { alias: ASSETS.icon_res_gem.alias, value: 1660 }, // Голубой гем
-            { alias: ASSETS.icon_res_gold.alias, value: 1510 }, // Зеленый гем
-            { alias: ASSETS.icon_res_energy.alias, value: 1180 }, // Фиолетовый
-            { alias: ASSETS.icon_res_fish.alias, value: 22520 }, // Синий кристалл/Рыба
-        ];
         
         let startX = 200; 
-        const spacing = 100; // Расстояние между центрами иконок
+        const spacing = 100; 
         resourceData.forEach((res, index) => {
-             // Используем сдвиг, чтобы 5 иконок уместились в правой части
              this.addResourceDisplay(res.alias, res.value, startX + index * spacing, topBarHeight / 2);
         });
         
         // --- Правые верхние кнопки ---
-        // Кнопка "X" (закрытия/выхода)
         const closeButton = PIXI.Sprite.from(ASSETS.icon_close.alias);
         closeButton.anchor.set(0.5);
-        closeButton.x = APP_WIDTH - 30; // Крайний правый угол
+        closeButton.x = APP_WIDTH - 30; 
         closeButton.y = topBarHeight / 2;
         closeButton.scale.set(0.6);
         closeButton.eventMode = 'static';
@@ -311,10 +335,9 @@ class MainMenuScene extends BaseScene {
         closeButton.on('pointertap', () => console.log('Нажата кнопка X'));
         topPanel.addChild(closeButton);
 
-        // Кнопка Настроек (или Меню) - settings_icon
         const settingsButton = PIXI.Sprite.from(ASSETS.settings_icon.alias);
         settingsButton.anchor.set(0.5);
-        settingsButton.x = APP_WIDTH - 80; // Левее кнопки X
+        settingsButton.x = APP_WIDTH - 80; 
         settingsButton.y = topBarHeight / 2;
         settingsButton.scale.set(0.6);
         settingsButton.eventMode = 'static';
@@ -325,7 +348,7 @@ class MainMenuScene extends BaseScene {
         // --- Левый верхний блок "Account Power" ---
         const powerPanel = new PIXI.Container();
         powerPanel.x = 20;
-        powerPanel.y = topBarHeight / 2; // Центрируем по высоте
+        powerPanel.y = topBarHeight / 2; 
         powerPanel.zIndex = 10;
         this.addChild(powerPanel);
 
@@ -360,7 +383,7 @@ class MainMenuScene extends BaseScene {
         container.x = x;
         container.y = y;
         
-        // Фон для ресурса (как на скриншоте)
+        // Фон для ресурса
         const bg = new PIXI.Graphics()
             .rect(-55, -25, 110, 50)
             .round(25)
@@ -369,8 +392,8 @@ class MainMenuScene extends BaseScene {
         
         const icon = PIXI.Sprite.from(iconAlias);
         icon.anchor.set(0.5); 
-        icon.x = -30; // Слева от текста
-        icon.scale.set(0.5); // Размер иконки
+        icon.x = -30; 
+        icon.scale.set(0.5); 
         container.addChild(icon);
 
         const text = new PIXI.Text(value.toString(), {
@@ -380,29 +403,27 @@ class MainMenuScene extends BaseScene {
             fontWeight: 'bold'
         });
         text.anchor.set(0, 0.5); 
-        text.x = -5; // Справа от иконки
+        text.x = -5; 
         container.addChild(text);
         
         this.addChild(container);
     }
 
     addBottomPanel() {
-        const bottomBarHeight = 100; // Немного уменьшим высоту
+        const bottomBarHeight = 100; 
         const bottomPanel = new PIXI.Graphics()
             .rect(0, 0, APP_WIDTH, bottomBarHeight)
             .fill({ color: 0x1A1A1A, alpha: 0.7 });
-        bottomPanel.y = APP_HEIGHT - bottomBarHeight; // Внизу экрана
-        bottomPanel.zIndex = 10; // Верхний слой
+        bottomPanel.y = APP_HEIGHT - bottomBarHeight; 
+        bottomPanel.zIndex = 10; 
         this.addChild(bottomPanel);
 
-        // У нас 4 кнопки (Build, Train, Upgrade, Map)
         const buttonCount = 4;
         const buttonWidth = APP_WIDTH / buttonCount; 
         const buttonY = bottomBarHeight / 2;
         
-        // Размещаем 4 кнопки
         this.createBottomPanelButton(ASSETS.icon_build.alias, 'Build', 0 * buttonWidth + buttonWidth / 2, buttonY, bottomPanel, () => console.log('Build'));
-        this.createBottomPanelButton(ASSETS.icon_train.alias, 'Train', 1 * buttonWidth + buttonWidth / 2, buttonY, bottomPanel, () => console.log('Train'));
+        this.createBottomPanelButton(ASSETS.icon_train.alias, 'Train', 1 * buttonWidth + buttonWidth / 2, buttonY, bottomPanel, () => this.manager.changeScene(CityScene)); // Изменено на CityScene для примера
         this.createBottomPanelButton(ASSETS.icon_upgrade.alias, 'Upgrade', 2 * buttonWidth + buttonWidth / 2, buttonY, bottomPanel, () => console.log('Upgrade'));
         this.createBottomPanelButton(ASSETS.icon_map.alias, 'Map', 3 * buttonWidth + buttonWidth / 2, buttonY, bottomPanel, () => console.log('Map'));
     }
@@ -422,8 +443,8 @@ class MainMenuScene extends BaseScene {
         
         const icon = PIXI.Sprite.from(iconAlias);
         icon.anchor.set(0.5);
-        icon.y = -10; // Выше текста
-        icon.scale.set(0.5); // Масштабирование иконки
+        icon.y = -10; 
+        icon.scale.set(0.5); 
         container.addChild(icon);
 
         const label = new PIXI.Text(labelText, {
@@ -432,7 +453,7 @@ class MainMenuScene extends BaseScene {
             fill: 0xFFFFFF
         });
         label.anchor.set(0.5);
-        label.y = 20; // Под иконкой
+        label.y = 20; 
         container.addChild(label);
 
         container.eventMode = 'static';
@@ -444,32 +465,6 @@ class MainMenuScene extends BaseScene {
         container.on('pointerout', () => container.scale.set(1.0));
 
         parentContainer.addChild(container);
-    }
-
-    // Вспомогательная функция для создания простой кнопки (для тестов)
-    createSimpleButton(text, action, color) {
-        const button = new PIXI.Graphics()
-            .rect(-120, -30, 240, 60)
-            .round(15)
-            .fill({ color: color });
-        
-        const label = new PIXI.Text(text, {
-            fontFamily: 'Arial',
-            fontSize: 24,
-            fill: 0x000000,
-            fontWeight: 'bold'
-        });
-        label.anchor.set(0.5);
-        
-        const container = new PIXI.Container();
-        container.addChild(button, label);
-        container.eventMode = 'static';
-        container.cursor = 'pointer';
-        container.on('pointertap', action);
-        container.on('pointerdown', () => container.scale.set(0.95));
-        container.on('pointerup', () => container.scale.set(1.0));
-        container.on('pointerout', () => container.scale.set(1.0));
-        return container;
     }
 }
 
@@ -522,6 +517,28 @@ class HQScene extends BaseScene {
     }
 }
 
+// --- СЦЕНА: ЛАБОРАТОРИЯ (LAB SCENE) ---
+// Простая сцена-заглушка для демонстрации перехода
+class LabScene extends BaseScene {
+    init() {
+        const bg = new PIXI.Graphics().rect(0, 0, APP_WIDTH, APP_HEIGHT).fill({ color: 0x00BFFF }); // Голубой фон
+        this.addChild(bg);
 
-// Запускаем инициализацию при загрузке страницы
-window.onload = init;
+        const text = new PIXI.Text('ЛАБОРАТОРИЯ (LAB)', {
+            fontFamily: 'Arial',
+            fontSize: 60,
+            fill: 0xFFFFFF,
+            align: 'center'
+        });
+        text.anchor.set(0.5);
+        text.x = APP_WIDTH / 2;
+        text.y = APP_HEIGHT / 2 - 100;
+        this.addChild(text);
+
+        const backButton = this.createSimpleButton('Назад в Меню', () => this.manager.changeScene(MainMenuScene), 0xFFD700);
+        backButton.x = APP_WIDTH / 2;
+        backButton.y = APP_HEIGHT / 2 + 100;
+        this.addChild(backButton);
+    }
+}
+
