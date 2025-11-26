@@ -3,44 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CryptoCats Game - Главное Меню</title>
+    <title>CryptoCats Game</title>
+    <!-- Подключаем Tailwind CSS для базовых утилит (хотя PIXI не использует его напрямую, это хорошая практика) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Сброс стилей для всего окна */
+        /* --- Обязательные стили для полноэкранной игры --- */
         body, html {
             margin: 0;
             padding: 0;
-            overflow: hidden; /* Скрывает прокрутку */
             width: 100%;
             height: 100%;
-            background-color: #000; /* Черный фон для области за пределами игры */
-            display: flex;
-            justify-content: center; /* Центрирует игру по горизонтали */
-            align-items: center; /* Центрирует игру по вертикали */
+            overflow: hidden; /* Убирает ненужные полосы прокрутки */
+            background-color: #000; /* Фон страницы на случай, если PIXI не загрузится */
+            font-family: 'Inter', sans-serif;
         }
-        
-        /* Контейнер, куда PIXI вставляет canvas */
+
+        /* Контейнер, который занимает весь экран */
         #pixi-container {
             width: 100%;
             height: 100%;
-            display: flex; /* Важно для центрирования canvas внутри */
+            display: flex;
             justify-content: center;
             align-items: center;
         }
 
-        /* Стиль для самого canvas, установленный PIXI, но мы убеждаемся, что он занимает доступное пространство */
-        canvas {
-            display: block; /* Убирает лишние отступы */
+        /* Canvas, который создаст PIXI.js */
+        #pixi-container canvas {
+            display: block;
         }
     </style>
 </head>
 <body>
-    <!-- Контейнер для игрового холста PIXI -->
-    <div id="pixi-container"></div>
-    
-    <!-- 
-        Загрузка основного скрипта main.js.
-        Важно: type="module" нужен для поддержки импорта PIXI из CDN.
-    -->
-    <script type="module" src="./main.js"></script>
+    <!-- Контейнер, ID которого мы используем в main.js (document.getElementById('pixi-container')) -->
+    <div id="pixi-container">
+        <!-- Здесь будет отображаться ваша игра -->
+    </div>
+
+    <!-- Загрузка основного JavaScript-кода -->
+    <!-- КРИТИЧЕСКИ ВАЖНО: Путь должен быть 'webapp/main.js' -->
+    <script type="module" src="webapp/main.js"></script>
 </body>
 </html>
