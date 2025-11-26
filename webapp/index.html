@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CryptoCats Defense</title>
-    <!-- Загрузка Tailwind CSS для базового стиля контейнера (необязательно, но помогает) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ПРЕДУПРЕЖДЕНИЕ: Tailwind удален, чтобы убрать лишние ошибки в консоли. -->
+    
     <style>
         body, html {
             margin: 0;
@@ -38,8 +38,12 @@
     <!-- Контейнер, куда PIXI будет добавлять свой canvas -->
     <div id="pixi-container"></div> 
 
-    <!-- ГЛАВНАЯ КОРНЕВАЯ ПРОБЛЕМА: Загрузка основного скрипта main.js -->
-    <!-- Убедитесь, что 'main.js' находится в той же папке, что и 'index.html' -->
+    <!-- ШАГ 1: Загрузка PIXI.js из CDN с помощью тега <script> -->
+    <!-- Это решает проблему 404, связанную с модульным импортом в некоторых средах. -->
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js"></script>
+
+    <!-- ШАГ 2: Загрузка основного скрипта main.js -->
+    <!-- Теперь main.js может использовать глобальную переменную PIXI -->
     <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,11 +1,11 @@
-import * as PIXI from 'https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js';
+// --- ВАЖНО: Удален 'import * as PIXI from...' 
+// Теперь PIXI доступен как глобальная переменная, загруженная в index.html.
 
 // --- КОНФИГУРАЦИЯ РЕСУРСОВ И ИНИЦИАЛИЗАЦИЯ ---
 
 // 1. Правильное указание путей к ресурсам
-// ИСПРАВЛЕНО: ПУТИ ИЗМЕНЕНЫ для соответствия существующим именам файлов:
-// 'icon_power_cat.png' -> 'heroes_icon.png'
-// 'icon_close.png' -> 'city_icon.png' (как временная заглушка)
+// ПРИМЕЧАНИЕ: Если после этого будет ошибка 404 на изображениях,
+// проверьте имена файлов в папке webapp/images.
 const ASSETS = {
     // Фон главного меню / карты. Использование map_background
     map_background: { alias: 'map_background', src: 'images/map_background.png' }, 
@@ -18,8 +18,8 @@ const ASSETS = {
     building_tank: { alias: 'building_tank', src: 'images/building_tank.png' }, 
 
     // Иконки UI и ресурсов (ИСПРАВЛЕННЫЕ)
-    icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, // Использован heroes_icon.png
-    icon_close: { alias: 'icon_close', src: 'images/city_icon.png' },          // Использован city_icon.png
+    icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, 
+    icon_close: { alias: 'icon_close', src: 'images/city_icon.png' },          
     settings_icon: { alias: 'settings_icon', src: 'images/settings_icon.png' }, 
 
     // Иконки ресурсов (5 иконок)
@@ -542,3 +542,6 @@ class LabScene extends BaseScene {
     }
 }
 
+
+// Запускаем инициализацию при загрузке страницы
+window.onload = init;
