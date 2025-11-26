@@ -3,77 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Cats Game</title>
+    <title>CryptoCats Game - Главное Меню</title>
     <style>
-        /* Общие стили для сброса и центрирования */
-        body {
+        /* Сброс стилей для всего окна */
+        body, html {
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #1a1a2e; /* Цвет фона, как в игре */
-            overflow: hidden; /* Скрыть скроллбары */
-        }
-        canvas {
-            display: block; /* Убираем нижний отступ */
-            border: 1px solid #333; /* Небольшая рамка для видимости */
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            /* Убедитесь, что размер холста адаптируется к размеру игры (1080x1920) */
-            max-width: 100vw;
-            max-height: 100vh;
-            width: auto;
-            height: auto;
-        }
-
-        /* Стили для экрана загрузки */
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
+            overflow: hidden; /* Скрывает прокрутку */
             width: 100%;
             height: 100%;
-            background-color: #1a1a2e;
-            color: #fff;
+            background-color: #000; /* Черный фон для области за пределами игры */
             display: flex;
-            flex-direction: column;
+            justify-content: center; /* Центрирует игру по горизонтали */
+            align-items: center; /* Центрирует игру по вертикали */
+        }
+        
+        /* Контейнер, куда PIXI вставляет canvas */
+        #pixi-container {
+            width: 100%;
+            height: 100%;
+            display: flex; /* Важно для центрирования canvas внутри */
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
-            font-size: 24px;
-            z-index: 1000;
         }
-        .spinner {
-            border: 8px solid rgba(255, 255, 255, 0.1);
-            border-top: 8px solid #FFD700;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        /* Стиль для самого canvas, установленный PIXI, но мы убеждаемся, что он занимает доступное пространство */
+        canvas {
+            display: block; /* Убирает лишние отступы */
         }
     </style>
-    
-    <!-- Telegram WebApp SDK для запуска в Telegram -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- Контейнер для игрового холста PIXI -->
+    <div id="pixi-container"></div>
     
-    <!-- Экран загрузки. Скрывается в main.js после инициализации. -->
-    <div id="loading-screen">
-        <div class="spinner"></div>
-        Загрузка ресурсов...
-    </div>
-
-    <!-- 1. PIXI.js ДОЛЖЕН БЫТЬ ЗАГРУЖЕН ПЕРВЫМ И БЕЗ TYPE="MODULE" -->
-    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.x/dist/browser/pixi.min.js"></script>
-
-    <!-- 2. Основной скрипт игры (main.js) загружается вторым, уже зная о PIXI -->
-    <script type="module" src="main.js"></script>
+    <!-- 
+        Загрузка основного скрипта main.js.
+        Важно: type="module" нужен для поддержки импорта PIXI из CDN.
+    -->
+    <script type="module" src="./main.js"></script>
 </body>
 </html>
