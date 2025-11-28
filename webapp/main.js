@@ -1,20 +1,17 @@
 // --- КОНФИГУРАЦИЯ РЕСУРСОВ И ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ---
 
-// Размеры приложения
 const APP_WIDTH = 720; 
 const APP_HEIGHT = 1280; 
 
-// Глобальные переменные для доступа после инициализации
 let app;
 let SceneManager; 
 
 // --- СТРУКТУРА ДАННЫХ ЮНИТОВ ---
 const UNIT_DATA = {
-    // Время изменено для более быстрого тестирования
     TraderCat: {
         type: 'TraderCat',
         icon: 'icon_res_coin', 
-        T1: { name: 'Apprentice Trader T1', cost: { coin: 100, fish: 50 }, time: 1, power: 10 }, 
+        T1: { name: 'Apprentice Trader T1', cost: { coin: 100, fish: 50 }, time: 1, power: 10 }, // time: 1с для быстрого теста
         T2: { name: 'Journeyman Trader T2', cost: { coin: 500, fish: 250 }, time: 3, power: 50 }, 
         T3: { name: 'Master Trader T3', cost: { coin: 2500, fish: 1250 }, time: 10, power: 250 }, 
         T4: { name: 'Grandmaster Trader T4', cost: { coin: 10000, fish: 5000 }, time: 30, power: 1000 }, 
@@ -23,25 +20,25 @@ const UNIT_DATA = {
         type: 'ScoutCat',
         icon: 'icon_res_energy',
         T1: { name: 'Prowler Scout T1', cost: { fish: 150, energy: 20 }, time: 2, power: 15 }, 
-        T2: { name: 'Tracker Scout T2', cost: { fish: 750, energy: 100 }, time: 4, power: 75 }, 
-        T3: { name: 'Phantom Scout T3', cost: { fish: 3750, energy: 500 }, time: 15, power: 375 }, 
-        T4: { name: 'Ghost Scout T4', cost: { fish: 15000, energy: 2000 }, time: 45, power: 1500 }, 
+        T2: { name: 'Tracker Scout T2', cost: { fish: 750, energy: 100 }, time: 6, power: 75 }, 
+        T3: { name: 'Phantom Scout T3', cost: { fish: 3750, energy: 500 }, time: 20, power: 375 }, 
+        T4: { name: 'Ghost Scout T4', cost: { fish: 15000, energy: 2000 }, time: 60, power: 1500 }, 
     },
     DefenderCat: {
         type: 'DefenderCat',
         icon: 'icon_res_gold',
-        T1: { name: 'Guard Defender T1', cost: { gold: 50, fish: 100 }, time: 1, power: 12 }, 
-        T2: { name: 'Sentinel Defender T2', cost: { gold: 250, fish: 500 }, time: 3, power: 60 }, 
-        T3: { name: 'Fortress Defender T3', cost: { gold: 1250, fish: 2500 }, time: 12, power: 300 }, 
-        T4: { name: 'Titan Defender T4', cost: { gold: 5000, fish: 10000 }, time: 36, power: 1200 }, 
+        T1: { name: 'Guard Defender T1', cost: { gold: 50, fish: 100 }, time: 2, power: 12 }, 
+        T2: { name: 'Sentinel Defender T2', cost: { gold: 250, fish: 500 }, time: 5, power: 60 }, 
+        T3: { name: 'Fortress Defender T3', cost: { gold: 1250, fish: 2500 }, time: 18, power: 300 }, 
+        T4: { name: 'Titan Defender T4', cost: { gold: 5000, fish: 10000 }, time: 50, power: 1200 }, 
     },
     AttackerCat: {
         type: 'AttackerCat',
         icon: 'icon_res_gem',
-        T1: { name: 'Fighter Attacker T1', cost: { gem: 10, fish: 100 }, time: 2, power: 14 }, 
-        T2: { name: 'Warrior Attacker T2', cost: { gem: 50, fish: 500 }, time: 4, power: 70 }, 
-        T3: { name: 'Conqueror Attacker T3', cost: { gem: 250, fish: 2500 }, time: 18, power: 350 }, 
-        T4: { name: 'Warlord Attacker T4', cost: { gem: 1000, fish: 10000 }, time: 54, power: 1400 }, 
+        T1: { name: 'Fighter Attacker T1', cost: { gem: 10, fish: 100 }, time: 3, power: 14 }, 
+        T2: { name: 'Warrior Attacker T2', cost: { gem: 50, fish: 500 }, time: 7, power: 70 }, 
+        T3: { name: 'Conqueror Attacker T3', cost: { gem: 250, fish: 2500 }, time: 25, power: 350 }, 
+        T4: { name: 'Warlord Attacker T4', cost: { gem: 1000, fish: 10000 }, time: 80, power: 1400 }, 
     },
 };
 
@@ -60,39 +57,46 @@ let GAME_STATE = {
         DefenderCat: 0,
         AttackerCat: 0,
     },
-    // Очередь строительства
     buildQueue: [], 
     totalPower: 0, 
+    // Данные зданий
     buildings: {
-        BANK: { level: 1 },
-        ACADEMY: { level: 1 },
+        BANK: { 
+            level: 1,
+            description: "Банк производит монеты и хранит ваши сбережения. Это жизненно важное здание для вашей экономики."
+        },
+        ACADEMY: { 
+            level: 1,
+            description: "Академия позволяет нанимать и тренировать боевых котов, улучшая их навыки и боевую мощь.",
+            // Данные для апгрейда
+            upgradeStartTime: 0,
+            upgradeDuration: 3000, 
+            isUpgrading: false,
+            // Стоимость апгрейда на уровень 2
+            upgradeCost: { coin: 500, gold: 200 }
+        },
     }
 };
 
-// --- РЕСУРСЫ ---
 const ASSETS = {
     map_background: { alias: 'map_background', src: 'images/map_background.png' }, 
     fon_academy: { alias: 'fon_academy', src: 'images/fon_academy.png' }, 
     
-    // Здания 
     building_center: { alias: 'building_center', src: 'images/building_center.png' },
     building_bank: { alias: 'building_bank', src: 'images/building_bank.png' }, 
     building_lab: { alias: 'building_lab', src: 'images/building_lab.png' }, 
     building_market: { alias: 'building_market', src: 'images/building_market.png' }, 
     building_tank: { alias: 'building_tank', src: 'images/building_tank.png' }, 
 
-    // Иконки UI и ресурсов 
     icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, 
     settings_icon: { alias: 'settings_icon', src: 'images/settings_icon.png' }, 
 
-    // Иконки ресурсов
     icon_res_coin: { alias: 'icon_res_coin', src: 'images/icon_res_coin.png' },
     icon_res_gem: { alias: 'icon_res_gem', src: 'images/icon_res_gem.png' },
     icon_res_gold: { alias: 'icon_res_gold', src: 'images/icon_res_gold.png' },
-    icon_res_energy: { alias: 'icon_energy', src: 'images/icon_res_energy.png' },
+    icon_res_energy: { alias: 'icon_res_energy', src: 'images/icon_res_energy.png' },
     icon_res_fish: { alias: 'icon_fish', src: 'images/icon_res_fish.png' }, 
 
-    // Иконки нижней панели
     icon_build: { alias: 'icon_build', src: 'images/icon_build.png' }, 
     icon_train: { alias: 'icon_train', src: 'images/icon_train.png' },
     icon_upgrade: { alias: 'icon_upgrade', src: 'images/icon_upgrade.png' },
@@ -103,21 +107,110 @@ const ASSETS = {
 // ================== ОПРЕДЕЛЕНИЕ КЛАССОВ PIXI =================
 // =========================================================================
 
-// Базовый класс для всех сцен
 class BaseScene extends PIXI.Container {
     constructor(manager) {
         super();
         this.manager = manager;
         this.sortableChildren = true; 
-        this.init();
+        // ИСПРАВЛЕНИЕ: Удален вызов this.init() отсюда. 
+        // Теперь он вызывается в SceneController.changeScene после завершения конструктора.
     }
     
-    init() {}
+    // МЕТОД init() остается как точка входа для логики сцены
+    init() {} 
     
-    // --- Общая вспомогательная функция для создания кнопок ---
-    createSimpleButton(text, action, color) {
+    // --- НОВЫЙ МЕТОД: Модальное окно с информацией ---
+    showInfoModal(titleText, contentText) {
+        // Проверяем, существует ли уже модальное окно, и удаляем его
+        if (this.infoModal) {
+            this.infoModal.destroy({ children: true });
+            this.infoModal = null;
+        }
+
+        const MODAL_WIDTH = APP_WIDTH * 0.8;
+        const MODAL_HEIGHT = APP_HEIGHT * 0.4;
+        const BORDER_COLOR = 0x39FF14; // Неоновый зеленый
+        const BORDER_THICKNESS = 4;
+        const BACKGROUND_COLOR = 0x000000;
+        const NEON_STYLE = {
+            fontFamily: 'Arial',
+            fontSize: 24, 
+            fill: BORDER_COLOR, 
+            align: 'center',
+            fontWeight: 'bold',
+            dropShadow: true,
+            dropShadowColor: `#${BORDER_COLOR.toString(16)}`,
+            dropShadowBlur: 10,
+            dropShadowAlpha: 1,
+            dropShadowDistance: 0,
+        };
+
+        const modal = new PIXI.Container();
+        modal.zIndex = 100; // Поверх всех элементов
+        modal.x = APP_WIDTH / 2;
+        modal.y = APP_HEIGHT / 2;
+        modal.eventMode = 'static'; // Блокируем клики под модальным окном
+        this.infoModal = modal;
+        this.addChild(modal);
+
+        // 1. Фон (Черный)
+        const bg = new PIXI.Graphics()
+            .roundRect(-MODAL_WIDTH / 2, -MODAL_HEIGHT / 2, MODAL_WIDTH, MODAL_HEIGHT, 20)
+            .fill({ color: BACKGROUND_COLOR, alpha: 0.9 });
+        modal.addChild(bg);
+
+        // 2. Неоновая обводка
+        const border = new PIXI.Graphics()
+            .roundRect(-MODAL_WIDTH / 2, -MODAL_HEIGHT / 2, MODAL_WIDTH, MODAL_HEIGHT, 20)
+            .stroke({ 
+                width: BORDER_THICKNESS, 
+                color: BORDER_COLOR, 
+                alpha: 1.0, 
+            });
+        
+        const glow = new PIXI.Graphics()
+            .roundRect(-MODAL_WIDTH / 2 - 2, -MODAL_HEIGHT / 2 - 2, MODAL_WIDTH + 4, MODAL_HEIGHT + 4, 22)
+            .stroke({ width: 2, color: BORDER_COLOR, alpha: 0.5 });
+        modal.addChild(glow);
+        
+        modal.addChild(border);
+
+        // 3. Заголовок
+        const title = new PIXI.Text(titleText, NEON_STYLE);
+        title.anchor.set(0.5);
+        title.y = -MODAL_HEIGHT / 2 + 40;
+        modal.addChild(title);
+
+        // 4. Текст контента
+        const content = new PIXI.Text(contentText, {
+            ...NEON_STYLE,
+            fontSize: 20,
+            wordWrap: true,
+            wordWrapWidth: MODAL_WIDTH - 60,
+            align: 'left',
+            lineHeight: 28,
+            fill: 0xFFFFFF, // Белый текст для контраста
+            dropShadowColor: `#000000`, // Отключаем неоновое свечение для основного текста
+            dropShadowBlur: 0
+        });
+        content.anchor.set(0.5, 0);
+        content.x = 0;
+        content.y = -MODAL_HEIGHT / 2 + 80;
+        modal.addChild(content);
+
+        // 5. Кнопка "Закрыть"
+        const closeButton = this.createSimpleButton('Закрыть', () => {
+            this.infoModal.destroy({ children: true });
+            this.infoModal = null;
+        }, 0xDC3545, 150, 40, 10);
+        closeButton.x = 0;
+        closeButton.y = MODAL_HEIGHT / 2 - 30;
+        modal.addChild(closeButton);
+    }
+    
+    createSimpleButton(text, action, color, width = 240, height = 60, radius = 15) {
         const button = new PIXI.Graphics()
-            .roundRect(-120, -30, 240, 60, 15) // x, y, width, height, radius
+            .roundRect(-width / 2, -height / 2, width, height, radius) 
             .fill({ color: color });
         
         const label = new PIXI.Text(text, {
@@ -146,9 +239,8 @@ class BaseScene extends PIXI.Container {
         return container;
     }
     
-    // Вспомогательная функция для создания масштабируемых кнопок (для Академии)
-    createScaledButton(text, action, color, baseScale) {
-         const btn = this.createSimpleButton(text, action, color);
+    createScaledButton(text, action, color, baseScale, width, height) {
+         const btn = this.createSimpleButton(text, action, color, width, height);
          btn.scale.set(baseScale);
          
          const clickScale = baseScale * 0.95;
@@ -169,29 +261,24 @@ class BaseScene extends PIXI.Container {
 
     updateTotalPower() {
         let total = 0;
-        // Расчет общей мощи на основе юнитов T1 (пока)
         for (const typeKey in GAME_STATE.units) {
             const unitCount = GAME_STATE.units[typeKey];
-            const unitPower = UNIT_DATA[typeKey]?.T1?.power || 0;
+            // Используем мощь T1 для простоты
+            const unitPower = UNIT_DATA[typeKey]?.T1?.power || 0; 
             total += unitCount * unitPower;
         }
         GAME_STATE.totalPower = total; 
         
-        // Обновление UI, если возможно
         if (SceneManager && SceneManager.currentScene) {
             SceneManager.currentScene.updateTopUI();
         }
     }
     
-    // --- ПЕРЕМЕЩЕННАЯ ЛОГИКА UI РЕСУРСОВ ---
-
-    // Вспомогательная функция для отображения одного ресурса
     addResourceDisplay(iconAlias, value, x, y, alpha) {
         const RESOURCE_ICON_SCALE = 0.06; 
         const container = new PIXI.Container();
         container.x = x;
         container.y = y;
-        // Помечаем элемент, чтобы его можно было легко удалить при обновлении
         container.isTopUIElement = true; 
         
         const BG_WIDTH = 115.5; 
@@ -230,12 +317,10 @@ class BaseScene extends PIXI.Container {
         return container; 
     }
     
-    // Основная логика отрисовки всей верхней панели UI
     addTopUIElements() {
         const PANEL_BG_ALPHA = 0.3; 
         const RESOURCE_BG_ALPHA = 1.0; 
 
-        // 1. Resources Data
         const resourceData = [
             { alias: ASSETS.icon_res_coin.alias, value: GAME_STATE.resources.coin }, 
             { alias: ASSETS.icon_res_gem.alias, value: GAME_STATE.resources.gem }, 
@@ -244,25 +329,21 @@ class BaseScene extends PIXI.Container {
             { alias: ASSETS.icon_res_fish.alias, value: GAME_STATE.resources.fish }, 
         ];
         
-        // 2. Background Panel
         const topBarHeight = 80;
         const topPanel = new PIXI.Graphics()
             .rect(0, 0, APP_WIDTH, topBarHeight)
             .fill({ color: 0x1A1A1A, alpha: PANEL_BG_ALPHA }); 
         topPanel.y = 0;
         topPanel.zIndex = 10; 
-        topPanel.isTopUIElement = true; // Помечаем для обновления
+        topPanel.isTopUIElement = true; 
         this.addChild(topPanel);
         
-        // 3. Resource Icons
         let startX = 50; 
         const spacing = 100; 
         resourceData.forEach((res, index) => {
-             // Используем унаследованный (или собственный) addResourceDisplay
              this.addResourceDisplay(res.alias, res.value, startX + index * spacing, topBarHeight / 2, RESOURCE_BG_ALPHA);
         });
         
-        // 4. Power Panel
         const POWER_PANEL_WIDTH = 200; 
         const ICON_POWER_CAT_SCALE = 1.69; 
 
@@ -277,6 +358,9 @@ class BaseScene extends PIXI.Container {
             .roundRect(0, -25, POWER_PANEL_WIDTH, 50, 10) 
             .fill({ color: 0x1A1A1A, alpha: PANEL_BG_ALPHA }); 
         powerPanel.addChild(powerBg);
+        
+        // Уровень здания Академии
+        const academyLevel = GAME_STATE.buildings.ACADEMY.level;
 
         const catIcon = PIXI.Sprite.from(ASSETS.icon_power_cat.alias);
         catIcon.anchor.set(0.5);
@@ -286,7 +370,7 @@ class BaseScene extends PIXI.Container {
         catIcon.height = 40 * ICON_POWER_CAT_SCALE;
         powerPanel.addChild(catIcon);
 
-        const powerText = new PIXI.Text(`Мощь: ${GAME_STATE.totalPower.toLocaleString()}\nУровень: ${GAME_STATE.buildings.ACADEMY.level}`, {
+        const powerText = new PIXI.Text(`Мощь: ${GAME_STATE.totalPower.toLocaleString()}\nАкадемия: ${academyLevel} LVL`, {
             fontFamily: 'Arial',
             fontSize: 16,
             fill: 0xFFFFFF,
@@ -296,7 +380,6 @@ class BaseScene extends PIXI.Container {
         powerText.y = -20;
         powerPanel.addChild(powerText);
         
-        // 5. Settings Button
         const ICON_SETTINGS_SCALE = 0.05 * 1.5; 
         
         const settingsButton = PIXI.Sprite.from(ASSETS.settings_icon.alias);
@@ -308,7 +391,6 @@ class BaseScene extends PIXI.Container {
         settingsButton.cursor = 'pointer';
         settingsButton.isTopUIElement = true;
         settingsButton.on('pointertap', () => {
-            // Безопасный вызов closeBuildingMenu, если текущая сцена поддерживает его
             if (this.manager.currentScene instanceof MainMenuScene) {
                 this.manager.currentScene.closeBuildingMenu();
             }
@@ -317,19 +399,21 @@ class BaseScene extends PIXI.Container {
         this.addChild(settingsButton); 
     }
     
-    // Функция для очистки и перерисовки верхнего UI
     updateTopUI() {
-         // Удаляем все элементы, помеченные как isTopUIElement
          this.children
             .filter(child => child.isTopUIElement)
             .forEach(child => child.destroy({ children: true }));
          
-         // Перерисовываем
          this.addTopUIElements();
     }
     
-    // --- Общая функция для фона ---
     addBackgroundCover(alias = 'map_background') { 
+        if (!PIXI.Assets.cache.has(alias)) {
+            const fallback = new PIXI.Graphics().rect(0,0,APP_WIDTH,APP_HEIGHT).fill(0x333333);
+            this.addChild(fallback);
+            return;
+        }
+
         const bgSprite = PIXI.Sprite.from(alias);
         const textureWidth = bgSprite.texture.width;
         const textureHeight = bgSprite.texture.height;
@@ -347,24 +431,17 @@ class BaseScene extends PIXI.Container {
     }
 }
 
-// --- МЕНЕДЖЕР СЦЕН (SCENE CONTROLLER) ---
+// --- МЕНЕДЖЕР СЦЕН ---
 class SceneController {
     constructor(app) {
         this.app = app;
         this.currentScene = null;
-        this.transitionOverlay = null; 
     }
 
     async changeScene(NewSceneClass) {
         if (this.currentScene && this.currentScene.constructor === NewSceneClass) return; 
 
-        const duration = 300; 
-        
-        // Плавный переход
-        await this.startTransition('fade-out', duration);
-
         if (this.currentScene) {
-            // Очищаем старую сцену
             this.currentScene.destroy({ children: true, texture: false, baseTexture: false });
             this.app.stage.removeChild(this.currentScene);
             this.currentScene = null;
@@ -374,62 +451,21 @@ class SceneController {
         this.app.stage.addChild(newScene);
         this.currentScene = newScene;
         
-        await this.startTransition('fade-in', duration);
-    }
-    
-    startTransition(type, duration) {
-        return new Promise(resolve => {
-            if (!this.transitionOverlay) {
-                this.transitionOverlay = new PIXI.Graphics()
-                    .rect(0, 0, APP_WIDTH, APP_HEIGHT)
-                    .fill({ color: 0x000000 });
-                this.transitionOverlay.zIndex = Infinity; 
-                this.app.stage.addChild(this.transitionOverlay);
-            }
-
-            this.transitionOverlay.eventMode = 'static'; 
-            this.transitionOverlay.cursor = 'default';
-            
-            let startAlpha, endAlpha;
-            if (type === 'fade-out') {
-                startAlpha = 0;
-                endAlpha = 1; 
-            } else { 
-                startAlpha = 1; 
-                endAlpha = 0; 
-            }
-            this.transitionOverlay.alpha = startAlpha;
-
-            let elapsed = 0;
-            const animate = (ticker) => {
-                // deltaTime - время, прошедшее с последнего кадра, в миллисекундах. 
-                // Преобразование в "единицы" для независимости от FPS.
-                elapsed += ticker.deltaTime; 
-                const progress = Math.min(elapsed / (duration * (app.ticker.FPS / 1000)), 1); 
-                
-                this.transitionOverlay.alpha = startAlpha + (endAlpha - startAlpha) * progress;
-
-                if (progress === 1) {
-                    this.app.ticker.remove(animate);
-                    if (type === 'fade-in') {
-                         this.app.stage.removeChild(this.transitionOverlay);
-                         this.transitionOverlay = null;
-                    }
-                    resolve();
-                }
-            };
-
-            this.app.ticker.add(animate);
-        });
+        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Вызываем init() здесь, чтобы убедиться, 
+        // что конструктор NewSceneClass (инициализация this.queueCountLabels = {}) завершен.
+        this.currentScene.init(); 
     }
 }
 
-// --- СЦЕНА: ГЛАВНОЕ МЕНЮ (MainMenuScene) ---
+// --- СЦЕНА: ГЛАВНОЕ МЕНЮ ---
 class MainMenuScene extends BaseScene {
     constructor(manager) {
         super(manager);
         this.activeMenu = null;
         this.updateTotalPower(); 
+        
+        // Биндим функцию обновления таймера для меню, чтобы можно было удалять
+        this.boundMenuUpdate = this.updateMenuTimer.bind(this);
     }
 
     init() {
@@ -439,11 +475,53 @@ class MainMenuScene extends BaseScene {
         this.addBackgroundCover(); 
         
         this.addBuildings();
-        this.addTopUIElements(); // Используем унаследованный метод
+        this.addTopUIElements(); 
         this.addBottomPanel();
+        
+        // Запускаем тикер для обновления таймеров в меню
+        this.manager.app.ticker.add(this.boundMenuUpdate);
     }
     
-    // Упрощенный метод, который вызывает базовый для обновления
+    destroy(options) {
+        if (this.manager.app.ticker) {
+            this.manager.app.ticker.remove(this.boundMenuUpdate);
+        }
+        // Дополнительно: закрываем модальное окно при выходе из сцены
+        if (this.infoModal) {
+             this.infoModal.destroy({ children: true });
+             this.infoModal = null;
+        }
+        super.destroy(options);
+    }
+    
+    // Функция обновления таймеров в открытом меню
+    updateMenuTimer() {
+        if (!this.activeMenu || !this.activeMenu.buildingType) return;
+        
+        const bData = GAME_STATE.buildings[this.activeMenu.buildingType];
+        
+        // Проверка апгрейда Академии
+        if (this.activeMenu.buildingType === 'ACADEMY' && bData.isUpgrading) {
+            const now = Date.now();
+            const finishTime = bData.upgradeStartTime + bData.upgradeDuration;
+            const remaining = Math.ceil(Math.max(0, finishTime - now) / 1000);
+            
+            if (remaining > 0) {
+                // Обновляем текст на кнопке, если она существует
+                if (this.activeMenu.upButtonLabel) {
+                    this.activeMenu.upButtonLabel.text = `${remaining}s`;
+                }
+            } else {
+                // Апгрейд завершен (это должно происходить в processBuildQueue, но для UI обновления)
+                if (this.activeMenu.upButtonLabel) {
+                    this.activeMenu.upButtonLabel.text = "UP";
+                }
+                // Если апгрейд ЗАВЕРШЕН в gameLoop, но меню было открыто, 
+                // мы просто показываем UP. Обновление уровня произойдет в processBuildQueue.
+            }
+        }
+    }
+    
     updateTopUI() {
          super.updateTopUI();
     }
@@ -452,8 +530,13 @@ class MainMenuScene extends BaseScene {
          if (this.activeMenu) {
             this.closeBuildingMenu();
         }
+        if (this.infoModal) {
+            this.infoModal.destroy({ children: true });
+            this.infoModal = null;
+        }
     }
     
+    // Функция рисования кнопок меню (пятиугольники)
     drawPentagonButton(labelText, color, action) {
          const container = new PIXI.Container();
          const size = 35; 
@@ -486,12 +569,42 @@ class MainMenuScene extends BaseScene {
          container.on('pointertap', (e) => {
              e.stopPropagation(); 
              action();
-             this.closeBuildingMenu(); 
+             // Не закрываем меню сразу, если это UP, чтобы видеть таймер
+             if (labelText !== 'UP') {
+                 this.closeBuildingMenu(); 
+             }
          });
          container.on('pointerover', () => container.scale.set(1.1));
          container.on('pointerout', () => container.scale.set(1.0));
+         
+         // Сохраняем ссылку на текст, чтобы менять его
+         container.labelObj = label;
 
          return container;
+    }
+    
+    // Вспомогательная кнопка "i" (круг)
+    drawCircleButton(text, color, action) {
+        const container = new PIXI.Container();
+        const circle = new PIXI.Graphics()
+            .circle(0, 0, 15)
+            .fill({ color: color })
+            .stroke({ width: 2, color: 0xFFFFFF });
+        
+        const label = new PIXI.Text(text, {
+            fontFamily: 'Arial', fontSize: 16, fill: 0xFFFFFF, fontWeight: 'bold'
+        });
+        label.anchor.set(0.5);
+        
+        container.addChild(circle, label);
+        container.eventMode = 'static';
+        container.cursor = 'pointer';
+        container.on('pointertap', (e) => {
+            e.stopPropagation();
+            action();
+        });
+        
+        return container;
     }
 
     showBuildingMenu(buildingSprite, buildingType) {
@@ -499,13 +612,15 @@ class MainMenuScene extends BaseScene {
             this.closeBuildingMenu();
         }
         
-        const level = GAME_STATE.buildings[buildingType].level;
+        const bData = GAME_STATE.buildings[buildingType];
+        const level = bData.level;
 
         const menu = new PIXI.Container();
         menu.zIndex = 5; 
         menu.eventMode = 'static'; 
+        menu.buildingType = buildingType; // Сохраняем тип для обновления
 
-        const levelText = new PIXI.Text(`${buildingType.toUpperCase()} LVL ${level}`, {
+        const levelText = new PIXI.Text(`${buildingType} LVL ${level}`, {
             fontFamily: 'Arial',
             fontSize: 20,
             fill: 0xFFFFFF,
@@ -518,16 +633,52 @@ class MainMenuScene extends BaseScene {
         levelText.anchor.set(0.5);
         levelText.y = -65;
         menu.addChild(levelText);
-
-
+        
         // 1. Кнопка UPGRADE (Оранжевый)
+        let upButtonText = "UP";
         const upAction = () => { 
-            console.log(`[${buildingType}] Нажата кнопка UP (Улучшение)`);
+            // Если уже идет апгрейд, ничего не делаем
+            if (bData.isUpgrading) return;
+            
+            // Если апгрейд доступен (проверяем ресурсы для Академии)
+            if (buildingType === 'ACADEMY') {
+                const cost = bData.upgradeCost;
+                // Проверка ресурсов
+                if (GAME_STATE.resources.coin >= cost.coin && GAME_STATE.resources.gold >= cost.gold) {
+                    // Списание
+                    GAME_STATE.resources.coin -= cost.coin;
+                    GAME_STATE.resources.gold -= cost.gold;
+                    this.updateTopUI();
+                    
+                    // Старт апгрейда
+                    bData.isUpgrading = true;
+                    bData.upgradeStartTime = Date.now();
+                    console.log(`[ACADEMY] Апгрейд на уровень ${bData.level + 1} начат. Списано: ${cost.coin} Coin, ${cost.gold} Gold.`);
+                    // UI обновится в next tick через updateMenuTimer
+                } else {
+                    console.log('Недостаточно ресурсов для апгрейда!');
+                    this.showInfoModal('ОШИБКА АПГРЕЙДА', `Недостаточно ресурсов для улучшения ${buildingType} до уровня ${bData.level + 1}.\nТребуется: ${cost.coin} Coin, ${cost.gold} Gold.`);
+                }
+            } else {
+                console.log(`[${buildingType}] Заглушка апгрейда`);
+            }
         };
-        const upButton = this.drawPentagonButton('UP', 0xFF8C00, upAction);
+        
+        // Устанавливаем текст, если апгрейд уже идет
+        if (buildingType === 'ACADEMY' && bData.isUpgrading) {
+            const now = Date.now();
+            const finishTime = bData.upgradeStartTime + bData.upgradeDuration;
+            const remaining = Math.ceil(Math.max(0, finishTime - now) / 1000);
+            upButtonText = remaining > 0 ? `${remaining}s` : "UP";
+        }
+        
+        const upButton = this.drawPentagonButton(upButtonText, 0xFF8C00, upAction);
         upButton.x = -45;
         upButton.y = 0;
         menu.addChild(upButton);
+        
+        // Сохраняем ссылку на текст кнопки UP в меню для обновления таймера
+        menu.upButtonLabel = upButton.labelObj;
 
         // 2. Кнопка USE (Голубой)
         const useAction = () => {
@@ -542,6 +693,15 @@ class MainMenuScene extends BaseScene {
         useButton.x = 45;
         useButton.y = 0;
         menu.addChild(useButton);
+        
+        // 3. Кнопка INFO (Маленькая круглая "i")
+        const infoAction = () => {
+            this.showInfoModal(`${buildingType} УРОВЕНЬ ${level}`, bData.description || "Информация отсутствует.");
+        };
+        const infoButton = this.drawCircleButton('i', 0x333333, infoAction);
+        infoButton.x = 0;
+        infoButton.y = -35; // Чуть выше между кнопками
+        menu.addChild(infoButton);
 
         menu.x = buildingSprite.x;
         menu.y = buildingSprite.y + buildingSprite.height * buildingSprite.scale.y * 0.6; 
@@ -574,7 +734,8 @@ class MainMenuScene extends BaseScene {
         center.scale.set(SCALE_CENTER); 
         center.eventMode = 'static';
         center.cursor = 'pointer';
-        center.on('pointertap', () => { 
+        center.on('pointertap', (e) => { 
+            e.stopPropagation(); 
             this.closeBuildingMenu(); 
             console.log('Нажато Center');
         });
@@ -616,7 +777,8 @@ class MainMenuScene extends BaseScene {
         market.scale.set(SCALE_NORMAL); 
         market.eventMode = 'static';
         market.cursor = 'pointer';
-        market.on('pointertap', () => {
+        market.on('pointertap', (e) => {
+            e.stopPropagation();
             this.closeBuildingMenu();
             console.log('Нажато Market');
         });
@@ -630,7 +792,8 @@ class MainMenuScene extends BaseScene {
         tank.scale.set(SCALE_NORMAL); 
         tank.eventMode = 'static';
         tank.cursor = 'pointer';
-        tank.on('pointertap', () => {
+        tank.on('pointertap', (e) => {
+            e.stopPropagation();
             this.closeBuildingMenu();
             console.log('Нажато Tank');
         });
@@ -706,11 +869,14 @@ class MainMenuScene extends BaseScene {
 
 // --- СЦЕНА: БАНК ---
 class BankScene extends BaseScene {
+    constructor(manager) {
+        super(manager);
+    }
     init() {
         const bg = new PIXI.Graphics().rect(0, 0, APP_WIDTH, APP_HEIGHT).fill({ color: 0x8B0000 }); 
         this.addChild(bg);
         
-        this.addTopUIElements(); // Отображаем ресурсы сверху
+        this.addTopUIElements(); 
 
         const text = new PIXI.Text('БАНК (BANK) - УРОВЕНЬ 1\nВ этом окне будут финансовые операции.', {
             fontFamily: 'Arial',
@@ -734,14 +900,16 @@ class BankScene extends BaseScene {
 class AcademyScene extends BaseScene {
     constructor(manager) {
         super(manager);
-        this.queueContainer = null;
+        // УЛУЧШЕНИЕ: Инициализация массивов и объектов в конструкторе для максимальной стабильности
+        this.unitPanels = []; 
+        this.boundUpdateBars = this.updateUnitProgressBars.bind(this);
+        this.queueCountLabels = {}; // ЭТОТ ОБЪЕКТ ТЕПЕРЬ ГАРАНТИРОВАННО СУЩЕСТВУЕТ
     }
 
     init() {
-        this.addBackgroundCover('map_background'); 
+        this.addBackgroundCover('fon_academy'); 
         this.addTopUIElements(); 
 
-        // --- Заголовок ---
         const NEON_GREEN_STYLE = {
             fontFamily: 'Arial',
             fontSize: 32, 
@@ -763,174 +931,85 @@ class AcademyScene extends BaseScene {
         text.y = 120; 
         this.addChild(text);
 
-        this.createQueueDisplay(); 
         this.displayUnitData();
 
         const backButton = this.createSimpleButton('Назад в Меню', () => {
             this.manager.changeScene(MainMenuScene);
-            // Удаляем слушатель при выходе
-            this.manager.app.ticker.remove(this.updateQueueDisplay.bind(this)); 
         }, 0xFFD700);
         backButton.x = APP_WIDTH / 2;
         backButton.y = APP_HEIGHT - 60; 
         this.addChild(backButton);
         
-        // Запускаем обновление очереди каждый кадр (для плавного прогресс-бара)
-        this.manager.app.ticker.add(this.updateQueueDisplay.bind(this));
+        // Запускаем обновление прогресс-баров каждый кадр с использованием boundUpdateBars
+        this.manager.app.ticker.add(this.boundUpdateBars);
     }
 
-    // --- Переопределение для отображения ресурсов вверху Академии ---
     updateTopUI() {
          super.updateTopUI(); 
     }
-
-    // --- Создание блока очереди ---
-    createQueueDisplay() {
-        const QUEUE_Y = 170;
-        const QUEUE_HEIGHT = 160; 
-        
-        const bg = new PIXI.Graphics()
-            .rect(0, 0, APP_WIDTH, QUEUE_HEIGHT) 
-            .fill({ color: 0x000000, alpha: 0.7 });
-        bg.y = QUEUE_Y;
-        bg.zIndex = 1;
-        this.addChild(bg);
-        
-        const title = new PIXI.Text('ОЧЕРЕДЬ НАЙМА:', { 
-            fontFamily: 'Arial', 
-            fontSize: 20, 
-            fill: 0xFFFFFF 
-        });
-        title.x = 20;
-        title.y = QUEUE_Y + 10;
-        this.addChild(title);
-        
-        this.queueContainer = new PIXI.Container();
-        this.queueContainer.x = 20;
-        this.queueContainer.y = QUEUE_Y + 40;
-        this.addChild(this.queueContainer);
-        
-        this.updateQueueDisplay(true); 
-    }
     
-    // --- Обновление отображения очереди и прогресс-бара ---
-    updateQueueDisplay(forceUpdate = false) {
-        if (!this.queueContainer) return;
-
-        // Если очередь пуста и контейнер уже пуст, выходим
-        if (GAME_STATE.buildQueue.length === 0 && !this.queueContainer.children.length) return;
-
-        const currentJob = GAME_STATE.buildQueue[0];
-        
-        // Если очередь опустела, и нам не нужно форсированное обновление, выходим
-        if (!currentJob && !forceUpdate) return;
-        
-        this.queueContainer.removeChildren(); // Очищаем старую очередь
-
-        if (!currentJob) {
-             const text = new PIXI.Text('Очередь пуста. Начните найм!', { 
-                fontFamily: 'Arial', 
-                fontSize: 24, 
-                fill: 0x888888 
-            });
-            this.queueContainer.addChild(text);
-            return;
-        }
+    // --- Метод для обновления прогресс-баров ---
+    updateUnitProgressBars() {
+        if (this.destroyed) return;
 
         const now = Date.now();
-        
-        const totalDuration = currentJob.finishTime - currentJob.startTime;
-        const elapsed = now - currentJob.startTime;
-        const progress = Math.min(elapsed / totalDuration, 1);
-        
-        const remainingTimeSec = Math.ceil((currentJob.finishTime - now) / 1000);
-        
-        // Общее время всей очереди (включая текущий)
-        const totalQueueTimeSec = GAME_STATE.buildQueue.reduce((sum, job) => sum + (job.finishTime - Date.now()) / 1000, 0);
 
-        // --- Статус текущего задания ---
-        const statusText = `Строится: 1x ${currentJob.unitType} (T${currentJob.tier.replace('T', '')}) - Осталось: ${remainingTimeSec} сек.`;
+        if (this.unitPanels) {
+            this.unitPanels.forEach(panel => {
+                if (panel.destroyed) return;
 
-        const statusLabel = new PIXI.Text(statusText, { 
-            fontFamily: 'Arial', 
-            fontSize: 20, 
-            fill: 0xFFFFFF 
-        });
-        statusLabel.x = 0;
-        statusLabel.y = 0;
-        this.queueContainer.addChild(statusLabel);
-        
-        // --- Прогресс-бар ---
-        const BAR_WIDTH = APP_WIDTH - 40;
-        const BAR_HEIGHT = 20;
-        const BAR_Y = 30;
+                const unitType = panel.unitType;
+                const progressContainer = panel.progressContainer;
+                const progressBar = panel.progressBar;
+                
+                // 1. Фильтруем очередь для текущего типа юнита
+                const unitQueue = GAME_STATE.buildQueue.filter(job => job.unitType === unitType);
+                
+                // 2. Находим текущий активный юнит (тот, что сейчас тренируется)
+                const activeJob = unitQueue.find(job => now >= job.startTime && now < job.finishTime);
+                
+                // 3. Подсчитываем количество в очереди (исключая активный, если он есть)
+                const totalInQueue = unitQueue.length;
+                const remainingInQueue = Math.max(0, totalInQueue - (activeJob ? 1 : 0));
+                
+                // 4. Обновляем счетчик очереди
+                if (this.queueCountLabels[unitType]) {
+                    this.queueCountLabels[unitType].text = `Очередь: ${remainingInQueue}`;
+                    this.queueCountLabels[unitType].visible = totalInQueue > 0;
+                }
 
-        // Фон бара (исправлено на более светлый серый для видимости)
-        const backgroundBar = new PIXI.Graphics()
-            .rect(0, 0, BAR_WIDTH, BAR_HEIGHT)
-            .fill({ color: 0x666666 }); // Фон (Серый)
-        backgroundBar.y = BAR_Y;
-        this.queueContainer.addChild(backgroundBar);
-
-        // Заполненная часть бара
-        const progressBar = new PIXI.Graphics()
-            .rect(0, 0, BAR_WIDTH * progress, BAR_HEIGHT)
-            .fill({ color: 0x00FF00 }); // Прогресс (Ярко-зеленый)
-        progressBar.y = BAR_Y;
-        this.queueContainer.addChild(progressBar);
-
-        // Текст процента
-        const percentText = new PIXI.Text(`${Math.round(progress * 100)}% (${Math.ceil(totalQueueTimeSec)} сек)`, { 
-            fontFamily: 'Arial', 
-            fontSize: 14, 
-            fill: 0x000000, 
-            fontWeight: 'bold' 
-        });
-        percentText.anchor.set(0.5);
-        percentText.x = BAR_WIDTH / 2;
-        percentText.y = BAR_Y + BAR_HEIGHT / 2;
-        this.queueContainer.addChild(percentText);
-        
-        // --- Список следующих в очереди ---
-        const nextJobs = GAME_STATE.buildQueue.slice(1);
-        if (nextJobs.length > 0) {
-             const groupedJobs = nextJobs.reduce((acc, job) => {
-                 const key = `${job.unitType}_${job.tier}`;
-                 if (!acc[key]) {
-                     acc[key] = { count: 0, unitType: job.unitType, totalTime: 0 };
-                 }
-                 acc[key].count++;
-                 acc[key].totalTime += job.timePerUnit;
-                 return acc;
-             }, {});
-             
-             const queueList = Object.values(groupedJobs).map(group => 
-                 `> ${group.count}x ${group.unitType} (Суммарно: ${group.totalTime} сек.)`
-             ).join('\n');
-             
-             const nextQueueText = new PIXI.Text(queueList, {
-                 fontFamily: 'Arial', 
-                 fontSize: 16, 
-                 fill: 0xAAAAAA,
-                 lineHeight: 20
-             });
-             nextQueueText.y = BAR_Y + BAR_HEIGHT + 10; 
-             this.queueContainer.addChild(nextQueueText);
+                if (activeJob) {
+                    const totalDuration = activeJob.finishTime - activeJob.startTime;
+                    const elapsed = now - activeJob.startTime; 
+                    const progress = Math.min(elapsed / totalDuration, 1);
+                    
+                    progressContainer.visible = true;
+                    // Плавное обновление ширины каждый кадр
+                    progressBar.width = APP_WIDTH * progress; 
+                    
+                } else {
+                    // Если нет активного юнита, но есть в очереди
+                    progressContainer.visible = totalInQueue > 0; 
+                    progressBar.width = 0; 
+                }
+            });
         }
     }
 
-    // Удаление слушателей при выходе из сцены
     destroy(options) {
          if (this.manager.app.ticker) {
-             // Важно удалить слушатель, чтобы он не запускался в других сценах
-             this.manager.app.ticker.remove(this.updateQueueDisplay.bind(this));
+             this.manager.app.ticker.remove(this.boundUpdateBars);
+         }
+         if (this.infoModal) {
+             this.infoModal.destroy({ children: true });
+             this.infoModal = null;
          }
          super.destroy(options);
     }
     
     displayUnitData() {
         const unitTypes = Object.keys(UNIT_DATA);
-        const START_Y = 350; 
+        const START_Y = 180; 
         const UNIT_HEIGHT = 180; 
         
         const unitsContainer = new PIXI.Container();
@@ -940,16 +1019,20 @@ class AcademyScene extends BaseScene {
             const unitTypeData = UNIT_DATA[typeKey];
             const tier1 = unitTypeData.T1;
             
-            const unitPanel = this.createUnitPanel(unitTypeData, tier1, index);
+            const unitPanel = this.createUnitPanel(typeKey, unitTypeData, tier1, index);
             unitPanel.y = index * UNIT_HEIGHT;
             unitsContainer.addChild(unitPanel);
+            
+            this.unitPanels.push(unitPanel);
         });
         
         this.addChild(unitsContainer);
     }
     
-    createUnitPanel(unitTypeData, unitTier, index) {
+    createUnitPanel(unitTypeKey, unitTypeData, unitTier, index) {
         const container = new PIXI.Container();
+        container.unitType = unitTypeKey; 
+        
         let quantity = 1; 
 
         const panelBg = new PIXI.Graphics()
@@ -957,17 +1040,26 @@ class AcademyScene extends BaseScene {
             .fill({ color: index % 2 === 0 ? 0x1A1A1A : 0x000000, alpha: 0.5 });
         container.addChild(panelBg);
         
+        // --- Заготовка под иконку ---
+        const placeholderIcon = new PIXI.Graphics()
+            .rect(0, 0, 100, 100)
+            .fill({ color: 0x555555 }); 
+        placeholderIcon.x = 20;
+        placeholderIcon.y = 35;
+        container.addChild(placeholderIcon);
+
+        // --- Имя юнита ---
         const unitName = new PIXI.Text(
             `${unitTier.name}`, 
-            { fontFamily: 'Arial', fontSize: 30, fill: 0xFFFFFF, fontWeight: 'bold' }
+            { fontFamily: 'Arial', fontSize: 28, fill: 0xFFFFFF, fontWeight: 'bold' }
         );
-        unitName.x = 20;
+        unitName.x = 140; 
         unitName.y = 15;
         container.addChild(unitName);
         
-        // --- Цена и иконки ресурсов ---
-        const costX = 20;
-        let currentCostY = 60;
+        // --- Цена и иконки ---
+        const costX = 140; 
+        let currentCostY = 55;
         let currentCostX = costX;
 
         for (const resKey in unitTier.cost) {
@@ -975,86 +1067,103 @@ class AcademyScene extends BaseScene {
             const costValue = unitTier.cost[resKey];
 
             const icon = PIXI.Sprite.from(iconAlias);
-            icon.scale.set(0.05); 
-            icon.anchor.set(0, 0.5);
+            icon.scale.set(0, 0.5);
             icon.x = currentCostX;
             icon.y = currentCostY;
             container.addChild(icon);
 
             const costText = new PIXI.Text(
                 `${costValue.toLocaleString()}`, 
-                { fontFamily: 'Arial', fontSize: 22, fill: 0xFFFFFF, fontWeight: 'bold' }
+                { fontFamily: 'Arial', fontSize: 20, fill: 0xFFFFFF, fontWeight: 'bold' }
             );
             costText.anchor.set(0, 0.5);
             costText.x = currentCostX + icon.width + 5;
             costText.y = currentCostY;
             container.addChild(costText);
             
-            currentCostX = costText.x + costText.width + 20; 
+            currentCostX = costText.x + costText.width + 15; 
         }
         
         const infoText = new PIXI.Text(
-            `Мощь: ${unitTier.power} | Время: ${unitTier.time} сек/юнит`, 
-            { fontFamily: 'Arial', fontSize: 18, fill: 0xCCCCCC }
+            `Мощь: ${unitTier.power} | Время: ${unitTier.time}с`, 
+            { fontFamily: 'Arial', fontSize: 16, fill: 0xCCCCCC }
         );
-        infoText.x = 20;
-        infoText.y = 110;
+        infoText.x = 140;
+        infoText.y = 85;
         container.addChild(infoText);
         
-        // --- Элементы управления количеством (Quantity Controls) ---
-        const CONTROL_Y = 145;
-        const CONTROL_X = APP_WIDTH - 250;
-        const TOTAL_COST_LABEL_X = APP_WIDTH - 450; 
-        const TOTAL_COST_LABEL_Y = 70;
+        // --- Индивидуальная шкала прогресса ---
+        const progressContainer = new PIXI.Container();
+        progressContainer.visible = false; 
+        progressContainer.y = 160; 
+        
+        const progressBg = new PIXI.Graphics()
+            .rect(0, 0, APP_WIDTH, 10)
+            .fill({ color: 0x333333, alpha: 0.5 });
+        progressContainer.addChild(progressBg);
+        
+        const progressBar = new PIXI.Graphics()
+            .rect(0, 0, 1, 10) 
+            .fill({ color: 0x00FF00, alpha: 0.8 });
+        progressContainer.addChild(progressBar);
+        
+        container.addChild(progressContainer);
+        
+        container.progressContainer = progressContainer;
+        container.progressBar = progressBar;
 
-        const quantityText = new PIXI.Text(quantity.toString(), { fontFamily: 'Arial', fontSize: 28, fill: 0xFFFFFF, fontWeight: 'bold' });
+        // --- Счетчик очереди ---
+        const queueCountLabel = new PIXI.Text(
+            `Очередь: 0`, 
+            { fontFamily: 'Arial', fontSize: 16, fill: 0x00FFFF }
+        );
+        queueCountLabel.anchor.set(1, 0.5); // Привязка к правому краю
+        queueCountLabel.x = APP_WIDTH - 10; 
+        queueCountLabel.y = 145;
+        queueCountLabel.visible = false;
+        container.addChild(queueCountLabel);
+        
+        // ТЕПЕРЬ 'this.queueCountLabels' ГАРАНТИРОВАННО НЕ undefined
+        this.queueCountLabels[unitTypeKey] = queueCountLabel; 
+
+        // --- Управление количеством ---
+        const CONTROL_Y = 125;
+        const CONTROL_X = APP_WIDTH - 250;
+        
+        const totalCostLabel = new PIXI.Text(
+            `Цена: ${this.formatTotalCost(unitTier.cost, quantity)}`, 
+            { fontFamily: 'Arial', fontSize: 16, fill: 0xFFD700 }
+        );
+        totalCostLabel.anchor.set(0, 0.5); 
+        totalCostLabel.x = 140; 
+        totalCostLabel.y = 115;
+        container.addChild(totalCostLabel);
+        
+        const quantityText = new PIXI.Text(quantity.toString(), { fontFamily: 'Arial', fontSize: 26, fill: 0xFFFFFF, fontWeight: 'bold' });
         quantityText.anchor.set(0.5);
         quantityText.x = CONTROL_X + 60;
         quantityText.y = CONTROL_Y;
         container.addChild(quantityText);
 
-        const totalCostLabel = new PIXI.Text(
-            `Общая цена: ${this.formatTotalCost(unitTier.cost, quantity)} (Время: ${unitTier.time * quantity} сек)`, 
-            { fontFamily: 'Arial', fontSize: 18, fill: 0xFFD700 }
-        );
-        totalCostLabel.anchor.set(0.0, 0.5); 
-        totalCostLabel.x = TOTAL_COST_LABEL_X; 
-        totalCostLabel.y = TOTAL_COST_LABEL_Y;
-        container.addChild(totalCostLabel);
-        
         const updateUI = () => {
             quantityText.text = quantity.toString();
-            const totalTime = unitTier.time * quantity;
-            
-            totalCostLabel.text = `Общая цена: ${this.formatTotalCost(unitTier.cost, quantity)} (Время: ${totalTime} сек)`;
+            totalCostLabel.text = `Цена: ${this.formatTotalCost(unitTier.cost, quantity)}`;
             
             let hasResources = this.checkResources(unitTier.cost, quantity);
             totalCostLabel.style.fill = hasResources ? 0xFFD700 : 0xFF4444;
             buildButton.alpha = hasResources ? 1.0 : 0.5; 
+            buildButton.eventMode = hasResources ? 'static' : 'none';
         };
 
+        // --- Квадратные кнопки ---
         const createQuantityButton = (text, action, color, x, y) => {
-             const baseScale = 0.35;
-             const btn = this.createSimpleButton(text, action, color);
-             btn.scale.set(baseScale);
+             const btnSize = 50; 
+             const btn = this.createScaledButton(text, action, color, 1.0, btnSize, btnSize);
              btn.x = x;
              btn.y = y;
-
-             const clickScale = baseScale * 0.90; 
-             
-             btn.removeAllListeners();
-             btn.on('pointertap', action); 
-             
-             btn.on('pointerdown', () => btn.scale.set(clickScale));
-             btn.on('pointerup', () => btn.scale.set(baseScale)); 
-             btn.on('pointerout', () => btn.scale.set(baseScale));
-             btn.on('pointerover', () => btn.scale.set(baseScale)); 
-             
              return btn;
         };
 
-
-        // Кнопка Уменьшить (-)
         const minusButton = createQuantityButton('-', () => {
             if (quantity > 1) {
                 quantity--;
@@ -1063,23 +1172,21 @@ class AcademyScene extends BaseScene {
         }, 0xDC3545, CONTROL_X, CONTROL_Y);
         container.addChild(minusButton);
 
-        // Кнопка Увеличить (+)
         const plusButton = createQuantityButton('+', () => {
             quantity++;
             updateUI();
         }, 0x28A745, CONTROL_X + 120, CONTROL_Y);
         container.addChild(plusButton);
         
-        // Кнопка "Начать постройку" (ИСПРАВЛЕНО: Цвет изменен на зеленый)
         const buildButton = this.createScaledButton('НАЙМ', () => {
             const hasResources = this.checkResources(unitTier.cost, quantity);
             if (!hasResources) {
-                console.log('НЕТ РЕСУРСОВ для найма!');
+                this.showInfoModal('НЕДОСТАТОЧНО РЕСУРСОВ', `Недостаточно ресурсов для найма ${quantity}x ${unitTypeKey}.`);
                 return; 
             }
 
             this.startUnitTraining(
-                unitTypeData.type, 
+                unitTypeKey, 
                 'T1', 
                 quantity, 
                 unitTier.cost, 
@@ -1087,10 +1194,10 @@ class AcademyScene extends BaseScene {
                 unitTier.power
             );
 
-            quantity = 1; // Сброс количества
+            quantity = 1; 
             updateUI();
             
-        }, 0x28A745, 0.8); // 0x28A745 = Ярко-зеленый
+        }, 0x28A745, 0.8, 180, 50); 
         
         buildButton.x = APP_WIDTH - 120; 
         buildButton.y = 35; 
@@ -1101,14 +1208,12 @@ class AcademyScene extends BaseScene {
         return container;
     }
     
-    // Вспомогательная функция для форматирования цены
     formatTotalCost(cost, quantity) {
          return Object.keys(cost).map(key => 
-            `${(cost[key] * quantity).toLocaleString()} ${key.toUpperCase()}`
+            `${(cost[key] * quantity).toLocaleString()}` 
          ).join(', ');
     }
     
-    // Вспомогательная функция для проверки ресурсов
     checkResources(cost, quantity) {
         for (const resKey in cost) {
             const required = cost[resKey] * quantity;
@@ -1119,47 +1224,53 @@ class AcademyScene extends BaseScene {
         return true;
     }
 
-    // --- ФУНКЦИЯ: Запуск найма (поштучно) ---
     startUnitTraining(unitType, tier, quantity, cost, timePerUnit, powerPerUnit) {
-        
-        // 1. Списание ресурсов (общее для всей партии)
+        // Списание ресурсов
         for (const resKey in cost) {
             GAME_STATE.resources[resKey] -= cost[resKey] * quantity;
         }
-        this.updateTopUI(); // Обновление ресурсов в UI
+        this.updateTopUI(); 
         
-        // 2. Добавление в очередь 
         const unitDurationMs = timePerUnit * 1000; 
-        let lastJobFinishTime = Date.now();
         
+        // Определяем время начала первого юнита
+        let firstJobStartTime = Date.now();
         if (GAME_STATE.buildQueue.length > 0) {
-             lastJobFinishTime = GAME_STATE.buildQueue[GAME_STATE.buildQueue.length - 1].finishTime;
+             // Если очередь не пуста, первый юнит в этой партии начнется после последнего юнита в очереди
+             const lastJobFinishTime = GAME_STATE.buildQueue[GAME_STATE.buildQueue.length - 1].finishTime;
+             // Убеждаемся, что он начнется не раньше текущего момента
+             firstJobStartTime = Math.max(Date.now(), lastJobFinishTime);
         }
         
+        let currentBatchStartTime = firstJobStartTime;
         const newJobs = [];
+        
         for (let i = 0; i < quantity; i++) {
-             const startTime = lastJobFinishTime;
-             const finishTime = startTime + unitDurationMs;
+             const finishTime = currentBatchStartTime + unitDurationMs;
 
              newJobs.push({
                  unitType,
                  tier,
                  timePerUnit: timePerUnit, 
-                 startTime,
+                 startTime: currentBatchStartTime,
                  finishTime, 
                  powerPerUnit
              });
-             lastJobFinishTime = finishTime; 
+             // Следующий юнит начнется сразу после окончания текущего
+             currentBatchStartTime = finishTime; 
         }
         
         GAME_STATE.buildQueue.push(...newJobs);
 
-        console.log(`[НАЙМ УСПЕШЕН] ${quantity}x ${unitType}. Общее время: ${timePerUnit * quantity} сек.`);
-        this.updateQueueDisplay(true); // Обновление отображения очереди
+        console.log(`[НАЙМ УСПЕШЕН] ${quantity}x ${unitType}. Первая партия начнет/продолжит в ${new Date(newJobs[0].startTime).toLocaleTimeString()}.`);
+        this.updateUnitProgressBars(); // Принудительно обновляем прогресс-бары и счетчики
     }
 }
 
 class CityScene extends BaseScene {
+    constructor(manager) {
+        super(manager);
+    }
     init() {
         const bg = new PIXI.Graphics().rect(0, 0, APP_WIDTH, APP_HEIGHT).fill({ color: 0x228B22 }); 
         this.addChild(bg);
@@ -1185,7 +1296,7 @@ class CityScene extends BaseScene {
 }
 
 
-// --- ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ, ЗАПУСКАЕМАЯ ПОСЛЕ window.onload ---
+// --- ОСНОВНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ ---
 async function init() {
     console.log("Диагностика: init() запущена.");
     
@@ -1209,20 +1320,21 @@ async function init() {
     window.addEventListener('resize', resize);
     resize();
 
-    // 2. Загрузка всех ресурсов
+    // 2. Загрузка ресурсов
     try {
         const assetList = Object.values(ASSETS);
         await PIXI.Assets.load(assetList); 
         
-        // 3. Инициализация менеджера сцены и запуск первой сцены
+        // 3. Инициализация менеджера
         SceneManager = new SceneController(app);
+        // Запускаем первую сцену, которая теперь сама вызывает .init()
         SceneManager.changeScene(MainMenuScene); 
         
-        // --- ЗАПУСК ИГРОВОГО ЦИКЛА (app.ticker.add) ---
+        // --- ЗАПУСК ИГРОВОГО ЦИКЛА ---
         app.ticker.add(gameLoop); 
         
     } catch (error) {
-        console.error("ОШИБКА КРИТИЧЕСКАЯ: Не удалось загрузить ресурсы! Проверьте, что ВСЕ изображения существуют в папке 'images' с правильными именами. Подробности:", error.message || error);
+        console.error("ОШИБКА: Не удалось загрузить ресурсы! Убедитесь, что все файлы (изображения) существуют в папке 'images' с правильными именами. Подробности:", error.message || error);
         
         if (app && app.stage) {
             const errorText = new PIXI.Text('КРИТИЧЕСКАЯ ОШИБКА: Ресурсы не загружены. См. консоль.', { 
@@ -1244,62 +1356,74 @@ async function init() {
 // ================== ГЛОБАЛЬНЫЕ ФУНКЦИИ ИГРОВОГО ЦИКЛА ====================
 // =========================================================================
 
-// --- ГЛОБАЛЬНАЯ ФУНКЦИЯ: Обработка очереди строительства/найма ---
 function processBuildQueue() {
     const now = Date.now();
     let queueChanged = false;
 
+    // 1. Обработка очереди юнитов
     if (GAME_STATE.buildQueue.length > 0) {
         let currentJob = GAME_STATE.buildQueue[0];
+        
+        // Проверка: гарантируем существование объекта GAME_STATE.units и свойства юнита
+        if (!GAME_STATE.units || !GAME_STATE.units.hasOwnProperty(currentJob.unitType)) {
+             console.error(`[КРИТИЧЕСКАЯ ОШИБКА ОЧЕРЕДИ] Тип юнита '${currentJob.unitType}' не существует в GAME_STATE.units. Задание удалено.`);
+             GAME_STATE.buildQueue.shift(); 
+             return; 
+        }
 
+        // Проверка, завершился ли юнит
         if (now >= currentJob.finishTime) {
-            // 1. Начисление юнита
-            GAME_STATE.units[currentJob.unitType]++; 
             
-            // 2. Начисление мощи
+            GAME_STATE.units[currentJob.unitType]++; 
             GAME_STATE.totalPower += currentJob.powerPerUnit; 
             
-            console.log(`[ЮНИТ ГОТОВ] 1x ${currentJob.unitType}. Начислена Мощь: ${currentJob.powerPerUnit}. Мощь аккаунта: ${GAME_STATE.totalPower}.`);
-            
-            // Удаляем завершенное задание
+            console.log(`[ЮНИТ ГОТОВ] 1x ${currentJob.unitType}. Всего: ${GAME_STATE.units[currentJob.unitType]}`);
             GAME_STATE.buildQueue.shift(); 
             queueChanged = true;
+        }
+    }
+    
+    // 2. Обработка апгрейдов зданий
+    for (const key in GAME_STATE.buildings) {
+        const bData = GAME_STATE.buildings[key];
+        if (bData.isUpgrading) {
+            if (now >= bData.upgradeStartTime + bData.upgradeDuration) {
+                bData.level++;
+                bData.isUpgrading = false;
+                console.log(`[ЗДАНИЕ] ${key} улучшено до уровня ${bData.level}!`);
+                queueChanged = true;
+            }
         }
     }
 
     // Если что-то выполнилось, обновляем UI
     if (queueChanged && SceneManager && SceneManager.currentScene) {
-         SceneManager.currentScene.updateTotalPower(); // Обновляет мощь и вызывает updateTopUI()
+         SceneManager.currentScene.updateTotalPower(); 
          
-         // Если мы в Академии, обновляем и ее очередь
+         // Если мы в Академии, принудительно обновим бары, чтобы увидеть, как начинается следующий юнит
          if (SceneManager.currentScene instanceof AcademyScene) {
-             SceneManager.currentScene.updateQueueDisplay(true); // Принудительное обновление
+             SceneManager.currentScene.updateUnitProgressBars(); 
          }
     }
 }
 
+// Интервал проверки очереди сокращен до 50 мс для более плавной анимации
 let lastQueueCheck = 0;
-const CHECK_INTERVAL_MS = 1000; 
+const CHECK_INTERVAL_MS = 50; 
 
 function gameLoop(ticker) {
-    // Проверка очереди раз в секунду
+    // Проверка очереди
     if (Date.now() - lastQueueCheck > CHECK_INTERVAL_MS) {
         processBuildQueue();
         lastQueueCheck = Date.now();
     }
-    
-    // Обновление прогресс-бара Академии каждый кадр
-    if (SceneManager && SceneManager.currentScene instanceof AcademyScene) { 
-        SceneManager.currentScene.updateQueueDisplay();
-    }
+    // Прогресс-бары обновляются в updateUnitProgressBars, привязанном к тикеру в AcademyScene.init
 }
 
-// Функция для адаптивности (масштабирование)
 function resize() {
     if (!app || !app.canvas) return;
     
     const parent = app.canvas.parentNode;
-    
     if (!parent || parent.nodeType !== 1) return; 
 
     const parentWidth = parent.clientWidth;
@@ -1321,5 +1445,4 @@ function resize() {
     app.renderer.resize(APP_WIDTH, APP_HEIGHT);
 }
 
-// Запускаем инициализацию при загрузке страницы
 window.onload = init;
