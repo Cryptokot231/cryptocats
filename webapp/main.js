@@ -31,7 +31,6 @@ const UNIT_DATA = {
         T3: { name: 'Attacker T3', cost: { gem: 250, fish: 2500 }, time: 40, power: 600 }, 
         T4: { name: 'Attacker T4', cost: { gem: 1000, fish: 10000 }, time: 180, power: 2500 }, 
     },
-    // 4-Й ЮНИТ
     EngineerCat: { 
         type: 'EngineerCat',
         icon: 'icon_build', 
@@ -56,7 +55,7 @@ const BUILDING_NAMES = {
     BANK: "Bank",
     ACADEMY: "Academy",
     MARKET: "Market",
-    TANK: "Crypto Lab" // Переименовали TANK в Crypto Lab
+    TANK: "Crypto Lab"
 };
 
 // --- СОСТОЯНИЕ ИГРЫ ---
@@ -79,6 +78,11 @@ let GAME_STATE = {
     incomePerSecond: 0,
     lastIncomeTime: Date.now(),
     
+    // Состояние квестов
+    quests: {
+        telegram_sub: { completed: false, claimed: false }
+    },
+
     buildings: {
         CENTER: {
             level: 1,
@@ -104,7 +108,7 @@ let GAME_STATE = {
             upgradeStartTime: 0, upgradeDuration: 5000, isUpgrading: false,
             upgradeCost: { coin: 800 }
         },
-        TANK: { // ТЕПЕРЬ ЭТО CRYPTO LAB
+        TANK: { 
             level: 1, 
             description: "Лаборатория исследований.", 
             isUpgrading: false,
@@ -170,7 +174,6 @@ class BaseScene extends PIXI.Container {
         this.updateTotalPower();
     } 
     
-    // --- UI РЕСУРСОВ ---
     addTopUI() {
         this.children.filter(c => c.isTopUI).forEach(c => c.destroy({children:true}));
 
@@ -374,7 +377,7 @@ class MainMenuScene extends BaseScene {
         addB('building_bank', APP_WIDTH/2 - 190, APP_HEIGHT/2 - 100, 'BANK', SCALE_BANK); 
         addB('building_lab', APP_WIDTH/2 + 220, APP_HEIGHT/2 - 100, 'ACADEMY', SCALE_OTHER); 
         addB('building_market', APP_WIDTH/2 + 220, APP_HEIGHT/2 + 250, 'MARKET', SCALE_OTHER); 
-        addB('building_tank', APP_WIDTH/2 - 190, APP_HEIGHT/2 + 250, 'TANK', SCALE_OTHER); // Crypto Lab (бывший TANK)
+        addB('building_tank', APP_WIDTH/2 - 190, APP_HEIGHT/2 + 250, 'TANK', SCALE_OTHER);
     }
 
     openMenu(sprite, type) {
@@ -440,7 +443,6 @@ class MainMenuScene extends BaseScene {
             infoText = `${bData.description}\n\nТекущий лимит Coin: ${GAME_STATE.storageCapacity.coin.toLocaleString()}`;
         }
         else if(type === 'TANK') {
-            // ЛОГИКА ДЛЯ CRYPTO LAB
             useTxt="Research"; useCol=0x9B59B6; useAct=()=>this.manager.changeScene(CryptoLabScene);
             infoText = "Лаборатория исследований новых технологий для котов и экономики.";
         }
@@ -460,17 +462,20 @@ class MainMenuScene extends BaseScene {
         iTxt.anchor.set(0.5); iTxt.y=iBtnY;
         m.addChild(iTxt);
         
-        // --- УЛУЧШЕННОЕ ОТОБРАЖЕНИЕ ИМЕНИ И УРОВНЯ ---
-        const bName = BUILDING_NAMES[type] || type;
-        const nameLvlStr = `${bName} Lv.${bData.level}`;
+        // --- НОВЫЙ ДИЗАЙН: ШАРИК С УРОВНЕМ ВМЕСТО НАЗВАНИЯ ---
+        const levelBubble = new PIXI.Container();
+        levelBubble.y = -85; // Позиция над кнопками
+        m.addChild(levelBubble);
 
-        // Фон для текста уровня, чтобы читалось лучше
-        const lvlBg = new PIXI.Graphics().roundRect(-70, -95, 140, 30, 10).fill({color:0x000000, alpha:0.7});
-        m.addChild(lvlBg);
+        // Сама сфера (шарик)
+        const bubbleG = new PIXI.Graphics();
+        bubbleG.circle(0,0, 25).fill({color:0x0088FF}).stroke({width:3, color:0xFFFFFF});
+        levelBubble.addChild(bubbleG);
 
-        const lvlTxt = new PIXI.Text(nameLvlStr, {fontFamily:'Arial', fontSize:16, fill:0xFFFFFF, fontWeight:'bold'});
-        lvlTxt.anchor.set(0.5); lvlTxt.y = -80; // Чуть выше кнопок
-        m.addChild(lvlTxt);
+        // Цифра уровня внутри
+        const lvlNum = new PIXI.Text(`${bData.level}`, {fontFamily:'Arial', fontSize:22, fill:0xFFFFFF, fontWeight:'bold'});
+        lvlNum.anchor.set(0.5);
+        levelBubble.addChild(lvlNum);
     }
 
     closeMenu() {
@@ -567,8 +572,9 @@ class MainMenuScene extends BaseScene {
         const buttons = [
             { icon: ASSETS.icon_map.alias, text: "Карта", action: ()=>this.showInfoModal("Карта", "Переход на карту (в разработке)") },
             { icon: ASSETS.icon_train.alias, text: "Атака", action: ()=>this.showInfoModal("Атака", "Сцена атаки (в разработке)") },
-            { icon: ASSETS.icon_upgrade.alias, text: "Герои", action: ()=>this.showInfoModal("Герои", "Список героев (в разработке)") },
-            { icon: ASSETS.icon_power_cat.alias, text: "Задания", action: ()=>this.showInfoModal("Задания", "Ежедневные задания (в разработке)") }
+            // ОБНОВЛЕННЫЕ ДЕЙСТВИЯ ДЛЯ КНОПОК
+            { icon: ASSETS.icon_upgrade.alias, text: "Герои", action: ()=>this.manager.changeScene(HeroesScene) },
+            { icon: ASSETS.icon_power_cat.alias, text: "Задания", action: ()=>this.manager.changeScene(QuestsScene) }
         ];
 
         buttons.forEach((btn, i) => {
@@ -592,7 +598,199 @@ class MainMenuScene extends BaseScene {
     }
 }
 
-// --- НОВАЯ СЦЕНА: CRYPTO LAB (ИССЛЕДОВАНИЯ) ---
+// --- СЦЕНА: ЗАДАНИЯ (QUESTS) ---
+class QuestsScene extends BaseScene {
+    constructor(manager) { super(manager); }
+
+    init() {
+        super.init();
+        this.addBackgroundCover('fon_academy');
+        this.addTopUI();
+
+        const title = new PIXI.Text("ЕЖЕДНЕВНЫЕ ЗАДАНИЯ", {fontFamily:'Arial', fontSize:36, fill:0xFFD700, fontWeight:'bold', stroke:0x000000, strokeThickness:4});
+        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 120;
+        this.addChild(title);
+
+        this.renderQuests();
+
+        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
+        back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
+        this.addChild(back);
+    }
+
+    renderQuests() {
+        const questData = {
+            id: 'telegram_sub',
+            text: "Подпишись на канал",
+            reward: 1000,
+            link: "https://t.me/+DRLHYNJFr0g0ODUy"
+        };
+        
+        const y = 200;
+        this.createQuestPanel(questData, y);
+    }
+
+    createQuestPanel(data, y) {
+        const p = new PIXI.Container();
+        p.x = APP_WIDTH/2; p.y = y;
+        this.addChild(p);
+
+        const w = APP_WIDTH - 40;
+        const bg = new PIXI.Graphics().roundRect(-w/2, -50, w, 100, 15)
+            .fill({color:0x222222, alpha:0.9}).stroke({width:2, color:0x00FF00});
+        p.addChild(bg);
+
+        // Иконка
+        const icon = new PIXI.Text("📢", {fontSize:40});
+        icon.anchor.set(0.5); icon.x = -w/2 + 50;
+        p.addChild(icon);
+
+        // Текст
+        const desc = new PIXI.Text(data.text, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF});
+        desc.anchor.set(0, 0.5); desc.x = -w/2 + 100; desc.y = -15;
+        p.addChild(desc);
+
+        // Награда
+        const rew = new PIXI.Text(`Награда: +${data.reward} Coin`, {fontFamily:'Arial', fontSize:18, fill:0xFFD700});
+        rew.anchor.set(0, 0.5); rew.x = -w/2 + 100; rew.y = 15;
+        p.addChild(rew);
+
+        // Статус
+        const qState = GAME_STATE.quests[data.id];
+        
+        if (qState.claimed) {
+            const done = new PIXI.Text("ВЫПОЛНЕНО", {fontFamily:'Arial', fontSize:22, fill:0x00FF00, fontWeight:'bold'});
+            done.anchor.set(0.5); done.x = w/2 - 80;
+            p.addChild(done);
+        } else {
+            // Кнопка
+            let btnText = qState.completed ? "ЗАБРАТЬ" : "ВЫПОЛНИТЬ";
+            let btnCol = qState.completed ? 0x28A745 : 0x007BFF;
+
+            const btn = this.createSimpleButton(btnText, ()=>{
+                if(!qState.completed) {
+                    // Этап 1: Переход по ссылке
+                    window.open(data.link, '_blank');
+                    qState.completed = true;
+                    // Перерисовываем сцену (просто перегружаем текущую)
+                    this.manager.changeScene(QuestsScene);
+                } else {
+                    // Этап 2: Забрать награду
+                    qState.claimed = true;
+                    GAME_STATE.resources.coin += data.reward;
+                    updateGameCalculations();
+                    this.manager.changeScene(QuestsScene); // Обновить UI
+                }
+            }, btnCol, 140, 50, 10);
+            
+            btn.x = w/2 - 90;
+            p.addChild(btn);
+        }
+    }
+}
+
+// --- СЦЕНА: ГЕРОИ (HEROES) ---
+class HeroesScene extends BaseScene {
+    constructor(manager) { super(manager); this.heroIndex = 0; }
+
+    init() {
+        super.init();
+        this.addBackgroundCover('fon_academy');
+        this.addTopUI();
+
+        const title = new PIXI.Text("ВАШИ ГЕРОИ", {fontFamily:'Arial', fontSize:36, fill:0xFFFFFF, fontWeight:'bold'});
+        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
+        this.addChild(title);
+
+        this.heroes = [
+            { name: "Scout Commander", icon: "icon_power_cat", desc: "Мастер разведки." },
+            { name: "Shadow Stalker", icon: "🐈‍⬛", desc: "Скрытный убийца (Coming Soon)." } // Заглушка
+        ];
+
+        this.renderHeroDisplay();
+
+        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
+        back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
+        this.addChild(back);
+    }
+
+    renderHeroDisplay() {
+        if(this.heroContainer) this.heroContainer.destroy({children:true});
+        this.heroContainer = new PIXI.Container();
+        this.heroContainer.y = 150;
+        this.addChild(this.heroContainer);
+
+        const hero = this.heroes[this.heroIndex];
+
+        // Панель характеристик сверху
+        const statsPanel = new PIXI.Graphics().roundRect(APP_WIDTH/2 - 250, 0, 500, 120, 20)
+            .fill({color:0x000000, alpha:0.8}).stroke({width:2, color:0xFFD700});
+        this.heroContainer.addChild(statsPanel);
+        
+        const hName = new PIXI.Text(hero.name, {fontFamily:'Arial', fontSize:28, fill:0xFFD700, fontWeight:'bold'});
+        hName.anchor.set(0.5); hName.x = APP_WIDTH/2; hName.y = 30;
+        this.heroContainer.addChild(hName);
+
+        const hDesc = new PIXI.Text(hero.desc, {fontFamily:'Arial', fontSize:18, fill:0xAAAAAA});
+        hDesc.anchor.set(0.5); hDesc.x = APP_WIDTH/2; hDesc.y = 65;
+        this.heroContainer.addChild(hDesc);
+
+        // Заглушка текста
+        const devText = new PIXI.Text("В РАЗРАБОТКЕ", {fontFamily:'Arial', fontSize:24, fill:0xFF0000, fontWeight:'bold'});
+        devText.anchor.set(0.5); devText.x = APP_WIDTH/2; devText.y = 95;
+        this.heroContainer.addChild(devText);
+
+        // Большая картинка героя (заглушка)
+        const heroVisual = new PIXI.Container();
+        heroVisual.x = APP_WIDTH/2; heroVisual.y = 400;
+        this.heroContainer.addChild(heroVisual);
+
+        // Круг за героем
+        const halo = new PIXI.Graphics().circle(0,0, 200).fill({color:0x222222}).stroke({width:5, color:0x00FFFF});
+        heroVisual.addChild(halo);
+
+        if(hero.icon === "icon_power_cat") {
+            // Используем спрайт
+             if(PIXI.Assets.cache.has(hero.icon)) {
+                const sp = PIXI.Sprite.from(hero.icon);
+                sp.anchor.set(0.5); sp.scale.set(0.2); 
+                heroVisual.addChild(sp);
+             }
+        } else {
+            // Эмодзи (черный кот)
+            const txtIcon = new PIXI.Text(hero.icon, {fontSize:150});
+            txtIcon.anchor.set(0.5);
+            heroVisual.addChild(txtIcon);
+        }
+
+        // СТРЕЛКИ
+        if(this.heroes.length > 1) {
+            // Левая
+            const leftArr = new PIXI.Text("◀", {fontSize:60, fill:0xFFFFFF});
+            leftArr.anchor.set(0.5); leftArr.x = 60; leftArr.y = 400;
+            leftArr.eventMode='static'; leftArr.cursor='pointer';
+            leftArr.on('pointertap', ()=>{
+                this.heroIndex--;
+                if(this.heroIndex < 0) this.heroIndex = this.heroes.length-1;
+                this.renderHeroDisplay();
+            });
+            this.heroContainer.addChild(leftArr);
+
+            // Правая
+            const rightArr = new PIXI.Text("▶", {fontSize:60, fill:0xFFFFFF});
+            rightArr.anchor.set(0.5); rightArr.x = APP_WIDTH - 60; rightArr.y = 400;
+            rightArr.eventMode='static'; rightArr.cursor='pointer';
+            rightArr.on('pointertap', ()=>{
+                this.heroIndex++;
+                if(this.heroIndex >= this.heroes.length) this.heroIndex = 0;
+                this.renderHeroDisplay();
+            });
+            this.heroContainer.addChild(rightArr);
+        }
+    }
+}
+
+// --- СЦЕНА: CRYPTO LAB (ИССЛЕДОВАНИЯ) - BLUE NEON STYLE ---
 class CryptoLabScene extends BaseScene {
     constructor(manager) { super(manager); }
 
@@ -600,41 +798,31 @@ class CryptoLabScene extends BaseScene {
         super.init();
         this.addBackgroundCover('fon_academy');
         
-        // --- СКРОЛЛ КОНТЕЙНЕР ---
-        // Создаем маску и контейнер для скроллинга
-        this.viewH = APP_HEIGHT - 100; // Высота видимой области
+        // --- ФИКС СКРОЛЛА ---
+        this.viewH = APP_HEIGHT - 100; 
         this.scrollContent = new PIXI.Container();
-        this.scrollContent.y = 0; // Начальная позиция
+        this.scrollContent.y = 0; 
         
-        // Маска (область видимости)
         const mask = new PIXI.Graphics().rect(0, 80, APP_WIDTH, this.viewH).fill(0xFFFFFF);
         this.addChild(mask);
         this.scrollContent.mask = mask;
         this.addChild(this.scrollContent);
 
-        // --- СОДЕРЖИМОЕ ДЕРЕВА (РИСУЕМ В scrollContent) ---
-        // Начало координат внутри контента. Дерево растет вверх.
-        // Допустим, низ дерева это Y=1200, верх Y=0.
-        // Чтобы увидеть низ, нужно scrollContent.y поднять вверх.
-        
         this.drawTechTree();
 
-        // Верхний бар UI (поверх скролла)
         this.addTopUI();
 
-        // Кнопка Назад (фиксирована)
         const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
         back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
         this.addChild(back);
 
-        // --- ЛОГИКА СКРОЛЛА (ПРОСТАЯ) ---
+        // --- ЛОГИКА СКРОЛЛА ---
         this.isDragging = false;
         this.lastY = 0;
         
-        // Фон для захвата событий
         const inputBg = new PIXI.Graphics().rect(0,80,APP_WIDTH, this.viewH).fill({color:0x000000, alpha:0.01});
         inputBg.eventMode = 'static';
-        this.addChildAt(inputBg, 0); // На самый задний план, но перед фоном сцены
+        this.addChildAt(inputBg, 0); 
         
         inputBg.on('pointerdown', (e)=>{
             this.isDragging = true;
@@ -648,64 +836,72 @@ class CryptoLabScene extends BaseScene {
                 this.clampScroll();
             }
         });
+        
         inputBg.on('pointerup', ()=>this.isDragging=false);
         inputBg.on('pointerupoutside', ()=>this.isDragging=false);
     }
 
     clampScroll() {
-        // Ограничиваем скролл
-        // Контент высокий (например 2000px). 
-        // Если y=0, видим верх. Если y = - (ContentH - ViewH), видим низ.
-        // Но у нас дерево снизу, так что мы хотим видеть низ по умолчанию.
-        const minH = APP_HEIGHT - 2000; // Примерная высота контента
-        if(this.scrollContent.y > 200) this.scrollContent.y = 200; // Эластичность сверху
-        if(this.scrollContent.y < -800) this.scrollContent.y = -800; // Эластичность снизу
+        if(this.scrollContent.y > 100) this.scrollContent.y = 100; 
+        if(this.scrollContent.y < -1500) this.scrollContent.y = -1500; 
     }
 
     drawTechTree() {
-        const startY = 1000; // Низ дерева (визуально)
-        const branchY = 600; // Уровень веток
-        
+        const rootX = APP_WIDTH/2;
+        let startY = 150; 
+
         const g = new PIXI.Graphics();
         this.scrollContent.addChild(g);
+        // BLUE NEON STYLE
+        g.stroke({width: 4, color: 0x00FFFF, alpha: 0.8});
 
-        // Стиль линий
-        g.stroke({width: 4, color: 0x00FFFF});
+        // --- 1. КОРНЕВОЙ УЗЕЛ (Base Grade) ---
+        this.createNode(rootX, startY, "Base Grade", "🏠");
 
-        // 1. Корень (Первый Грейд)
-        const rootX = APP_WIDTH/2;
-        
-        // Линии от корня к 4 веткам
+        // --- 2. РАЗВИЛКА НА 4 ВЕТКИ (Сразу от корня) ---
         const branches = [
-            {x: rootX - 200, name: "Economy", icon: "💰"},
-            {x: rootX - 70,  name: "Units", icon: "⚔️"},
-            {x: rootX + 70,  name: "Builds", icon: "🏗️"},
-            {x: rootX + 200, name: "Raids", icon: "🔥"}
+            { offsetX: -270, name: "Economy", icon: "💰" },
+            { offsetX: -90,  name: "Units", icon: "⚔️" },
+            { offsetX: 90,   name: "Builds", icon: "🏗️" },
+            { offsetX: 270,  name: "Raids", icon: "🔥" }
         ];
 
+        const branchStartY = startY + 150; // Y позиция голов веток
+
         branches.forEach(b => {
-            // Линия от центра низа к ветке
+            const bX = rootX + b.offsetX;
+            
+            // Линия от Корня к Голове ветки
             g.moveTo(rootX, startY);
-            g.lineTo(rootX, startY - 100); // Немного вверх
-            g.lineTo(b.x, branchY + 100);  // К позиции ветки
-            g.lineTo(b.x, branchY);
-            
-            // Узел ветки
-            this.createNode(b.x, branchY, b.name, b.icon);
-            
-            // Дальше вверх (имитация будущих грейдов)
-            g.moveTo(b.x, branchY);
-            g.lineTo(b.x, branchY - 200); // Вверх
-            this.createNode(b.x, branchY - 200, "Tier 2", "🔒");
+            g.lineTo(bX, branchStartY);
+
+            // Рисуем 4 грейда вниз для каждой ветки
+            let currentY = branchStartY;
+            for(let i=1; i<=4; i++) {
+                // Если не первый узел, рисуем линию от предыдущего
+                if(i > 1) {
+                    g.moveTo(bX, currentY - 150);
+                    g.lineTo(bX, currentY);
+                }
+
+                this.createNode(bX, currentY, `${b.name} ${i}`, b.icon);
+                
+                // Если это последний (4-й) грейд, рисуем линию к Tier 2 замку
+                if(i === 4) {
+                    g.moveTo(bX, currentY);
+                    g.lineTo(bX, currentY + 150);
+                    this.createNode(bX, currentY + 150, "Tier 2", "🔒");
+                }
+
+                currentY += 150; // Шаг вниз
+            }
         });
 
-        // Узел Корня (рисуем последним, чтоб был поверх линий)
-        this.createNode(rootX, startY, "Base Tech", "🏠");
-        
-        // Текст заголовка в мире
-        const title = new PIXI.Text("CRYPTO LAB RESEARCH", {fontFamily:'Arial', fontSize:40, fill:0x9B59B6, align:'center'});
-        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = startY + 150;
+        const title = new PIXI.Text("RESEARCH LAB", {fontFamily:'Arial', fontSize:32, fill:0x00FFFF, align:'center', fontWeight:'bold', dropShadow:true, dropShadowColor:0x0000FF, dropShadowBlur:10});
+        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 60;
         this.scrollContent.addChild(title);
+        
+        this.scrollContent.addChildAt(g, 0);
     }
 
     createNode(x, y, label, iconChar) {
@@ -713,24 +909,26 @@ class CryptoLabScene extends BaseScene {
         c.x = x; c.y = y;
         this.scrollContent.addChild(c);
 
-        // Круг
-        const bg = new PIXI.Graphics().circle(0,0,40).fill({color:0x222222}).stroke({width:3, color:0x00FF00});
+        // НЕОНОВЫЙ КРУГ
+        const bg = new PIXI.Graphics()
+            .circle(0,0,40)
+            .fill({color:0x001133})
+            .stroke({width:3, color:0x00FFFF}); 
         c.addChild(bg);
 
-        // Иконка (текстовая заглушка)
-        const icon = new PIXI.Text(iconChar, {fontSize:30});
+        // Иконка
+        const icon = new PIXI.Text(iconChar, {fontSize:28});
         icon.anchor.set(0.5);
         c.addChild(icon);
 
         // Подпись
-        const lbl = new PIXI.Text(label, {fontFamily:'Arial', fontSize:16, fill:0xFFFFFF, fontWeight:'bold'});
-        lbl.anchor.set(0.5); lbl.y = 55;
+        const lbl = new PIXI.Text(label, {fontFamily:'Arial', fontSize:14, fill:0xCCFFFF, fontWeight:'bold', align:'center', wordWrap:true, wordWrapWidth: 100});
+        lbl.anchor.set(0.5, 0); lbl.y = 45; 
         c.addChild(lbl);
         
-        // Интерактив
         c.eventMode = 'static';
         c.cursor = 'pointer';
-        c.on('pointertap', ()=>this.showInfoModal(label, "Исследование пока недоступно в этой демо-версии."));
+        c.on('pointertap', ()=>this.showInfoModal(label, "Исследование пока недоступно."));
     }
 }
 
@@ -907,17 +1105,13 @@ class AcademyScene extends BaseScene {
         hireBtn.x = APP_WIDTH - 80; hireBtn.y = 110;
         p.addChild(hireBtn);
 
-        // --- ИСПРАВЛЕНИЕ ПРОГРЕСС БАРА ---
-        // Создаем контейнер для бара
         const barContainer = new PIXI.Container();
         barContainer.position.set(100, 145);
         p.addChild(barContainer);
 
-        // Фон бара (черный), рисуем от 0,0 внутри контейнера
         const barBg = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x000000);
         barContainer.addChild(barBg);
         
-        // Заливка (зеленая), рисуем от 0,0. Width будем менять.
         const barFill = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x00FF00);
         barFill.width = 0; 
         barContainer.addChild(barFill);
@@ -960,7 +1154,6 @@ class AcademyScene extends BaseScene {
                 if(now >= cur.startTime) {
                     const tot = cur.finish - cur.startTime;
                     const el = now - cur.startTime;
-                    // width работает корректно, т.к. бар внутри контейнера и нарисован от 0
                     p.bar.width = 300 * Math.min(el/tot, 1);
                 } else {
                     p.bar.width = 0;
@@ -1028,6 +1221,14 @@ async function init() {
     console.log("Start Init");
     app = new PIXI.Application();
     await app.init({ width: APP_WIDTH, height: APP_HEIGHT, background: '#000000' });
+    
+    // --- ВАЖНЫЙ ФИКС ДЛЯ IPHONE ---
+    // Устанавливаем стили для предотвращения системных жестов
+    app.canvas.style.touchAction = 'none'; 
+    app.canvas.style.overscrollBehavior = 'none';
+    document.body.style.overscrollBehavior = 'none';
+    document.body.style.overflow = 'hidden';
+
     document.getElementById('pixi-container').appendChild(app.canvas);
     
     window.addEventListener('resize', resize);
