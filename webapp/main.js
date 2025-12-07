@@ -78,38 +78,69 @@ let GAME_STATE = {
     incomePerSecond: 0,
     lastIncomeTime: Date.now(),
     
-    // Состояние квестов
     quests: {
         telegram_sub: { completed: false, claimed: false }
+    },
+
+    // Состояние промокодов
+    codes: {
+        "CRYPTOKOT": { used: false, reward: { coin: 1000 } }
+    },
+    
+    // Реферальная система (заглушка)
+    referrals: {
+        count: 0,
+        link: "https://t.me/CryptoCatsBot?start=ref_12345"
     },
 
     buildings: {
         CENTER: {
             level: 1,
+            isBuilt: true, 
             description: "Центр управления.",
             upgradeStartTime: 0, upgradeDuration: 10000, isUpgrading: false,
             upgradeCost: { coin: 1000 }
         },
         BANK: { 
             level: 1,
+            isBuilt: false,
+            buildCost: { coin: 100 }, 
+            buildDuration: 3000, 
+            isConstructing: false,
+            constructionStartTime: 0,
             description: "Банк хранит ресурсы.",
             upgradeStartTime: 0, upgradeDuration: 5000, isUpgrading: false,
             upgradeCost: { coin: 500 }
         },
         ACADEMY: { 
             level: 1,
+            isBuilt: false,
+            buildCost: { coin: 100 },
+            buildDuration: 3000,
+            isConstructing: false,
+            constructionStartTime: 0,
             description: "Казарма, здесь обучаются боевые коты.",
             upgradeStartTime: 0, upgradeDuration: 3000, isUpgrading: false,
             upgradeCost: { coin: 500 }
         },
         MARKET: { 
             level: 1, 
-            description: "Рынок обеспечивает базовый доход и позволяет нанимать трейдеров.", 
+            isBuilt: false,
+            buildCost: { coin: 100 },
+            buildDuration: 3000,
+            isConstructing: false,
+            constructionStartTime: 0,
+            description: "Рынок обеспечивает базовый доход.", 
             upgradeStartTime: 0, upgradeDuration: 5000, isUpgrading: false,
             upgradeCost: { coin: 800 }
         },
         TANK: { 
             level: 1, 
+            isBuilt: false,
+            buildCost: { coin: 100 },
+            buildDuration: 3000,
+            isConstructing: false,
+            constructionStartTime: 0,
             description: "Лаборатория исследований.", 
             isUpgrading: false,
             upgradeStartTime: 0, upgradeDuration: 8000,
@@ -141,17 +172,25 @@ const ASSETS = {
     icon_train: { alias: 'icon_train', src: 'images/icon_train.png' },
     icon_upgrade: { alias: 'icon_upgrade', src: 'images/icon_upgrade.png' },
     icon_map: { alias: 'icon_map', src: 'images/icon_map.png' }, 
+    // Используем icon_train как иконку друзей пока нет спец иконки
+    icon_friends: { alias: 'icon_friends', src: 'images/icon_train.png' },
 };
 
 function updateGameCalculations() {
     const BASE = GAME_STATE.storageCapacity.base;
-    const bankLvl = GAME_STATE.buildings.BANK.level;
-    GAME_STATE.storageCapacity.coin = BASE + (bankLvl * 1000); 
+    if(GAME_STATE.buildings.BANK.isBuilt) {
+        const bankLvl = GAME_STATE.buildings.BANK.level;
+        GAME_STATE.storageCapacity.coin = BASE + (bankLvl * 1000); 
+    } else {
+        GAME_STATE.storageCapacity.coin = BASE;
+    }
     
-    const marketLvl = GAME_STATE.buildings.MARKET.level;
-    const marketBaseIncome = marketLvl * 50; 
+    let totalIncomePerHour = 0;
+    if(GAME_STATE.buildings.MARKET.isBuilt) {
+        const marketLvl = GAME_STATE.buildings.MARKET.level;
+        totalIncomePerHour += marketLvl * 50; 
+    }
     
-    let totalIncomePerHour = marketBaseIncome; 
     for(let tier in TRADER_DATA) {
         totalIncomePerHour += GAME_STATE.traders[tier] * TRADER_DATA[tier].incomePerHour;
     }
@@ -184,10 +223,11 @@ class BaseScene extends PIXI.Container {
         
         const caps = GAME_STATE.storageCapacity;
         
+        // --- ОБМЕНЯЛИ МЕСТАМИ GEM и FISH ---
         const resList = [
             { icon: ASSETS.icon_res_coin.alias, val: Math.floor(GAME_STATE.resources.coin), cap: caps.coin },
-            { icon: ASSETS.icon_res_gem.alias, val: Math.floor(GAME_STATE.resources.gem), cap: caps.gem },
             { icon: ASSETS.icon_res_fish.alias, val: Math.floor(GAME_STATE.resources.fish), cap: caps.fish },
+            { icon: ASSETS.icon_res_gem.alias, val: Math.floor(GAME_STATE.resources.gem), cap: caps.gem },
         ];
         
         let startX = 80; 
@@ -224,11 +264,13 @@ class BaseScene extends PIXI.Container {
             topBar.addChild(incText);
         }
         
+        // --- НАСТРОЙКИ (ШЕСТЕРЕНКА) ---
         const settBtn = PIXI.Sprite.from(ASSETS.settings_icon.alias);
         settBtn.anchor.set(0.5); settBtn.scale.set(0.06);
         settBtn.x = APP_WIDTH - 25; settBtn.y = 110;
         settBtn.eventMode='static'; settBtn.cursor='pointer';
         settBtn.isTopUI = true; 
+        settBtn.on('pointertap', () => this.openSettingsMenu());
         this.addChild(settBtn);
     }
 
@@ -313,6 +355,66 @@ class BaseScene extends PIXI.Container {
         return c;
     }
 
+    // --- МЕНЮ НАСТРОЕК ---
+    openSettingsMenu() {
+        if(this.infoModal) this.infoModal.destroy({children:true});
+        const W = APP_WIDTH * 0.85, H = APP_HEIGHT * 0.4;
+        const m = new PIXI.Container();
+        m.zIndex = 300; m.x = APP_WIDTH/2; m.y = APP_HEIGHT/2;
+        m.eventMode='static';
+        this.infoModal = m;
+        this.addChild(m);
+
+        // Фон как у зданий
+        const bg = new PIXI.Graphics().roundRect(-W/2, -H/2, W, H, 20)
+            .fill({color:0x111111, alpha:0.98}).stroke({width:3, color:0xAAAAAA});
+        m.addChild(bg);
+
+        const title = new PIXI.Text("НАСТРОЙКИ", {fontFamily:'Arial', fontSize:28, fill:0xFFFFFF, fontWeight:'bold'});
+        title.anchor.set(0.5); title.y = -H/2 + 30;
+        m.addChild(title);
+
+        // Кнопка ввода кода
+        const inputBtn = this.createSimpleButton("ВВЕСТИ КОД", ()=>{
+            const code = prompt("Введите промокод:");
+            if(code) {
+                this.checkBonusCode(code.trim().toUpperCase());
+            }
+        }, 0x3C8CE7, 250, 60);
+        inputBtn.y = -20;
+        m.addChild(inputBtn);
+
+        const hint = new PIXI.Text("Попробуй: CRYPTOKOT", {fontFamily:'Arial', fontSize:14, fill:0x777777});
+        hint.anchor.set(0.5); hint.y = 25;
+        m.addChild(hint);
+
+        const close = this.createSimpleButton("Закрыть", ()=>m.destroy({children:true}), 0xDC3545, 120, 40);
+        close.y = H/2 - 40;
+        m.addChild(close);
+    }
+
+    checkBonusCode(code) {
+        if (GAME_STATE.codes[code]) {
+            if (!GAME_STATE.codes[code].used) {
+                GAME_STATE.codes[code].used = true;
+                const reward = GAME_STATE.codes[code].reward;
+                
+                let msg = "Награда получена:\n";
+                if(reward.coin) {
+                    GAME_STATE.resources.coin += reward.coin;
+                    msg += `+${reward.coin} Coin\n`;
+                }
+                updateGameCalculations();
+                this.addTopUI();
+                alert(msg); // Простой алерт для результата
+            } else {
+                alert("Этот код уже использован!");
+            }
+        } else {
+            alert("Неверный код!");
+        }
+    }
+
     addBackgroundCover(alias) {
         if(!PIXI.Assets.cache.has(alias)) return;
         const sp = PIXI.Sprite.from(alias);
@@ -341,12 +443,19 @@ class SceneController {
 
 // --- ГЛАВНОЕ МЕНЮ ---
 class MainMenuScene extends BaseScene {
-    constructor(manager) { super(manager); this.activeMenu = null; }
+    constructor(manager) { super(manager); this.activeMenu = null; this.buildingsContainer = null; }
     
     init() {
         super.init(); 
         this.addBackgroundCover('map_background');
-        this.addBuildings();
+        
+        // Контейнер зданий должен быть ниже UI, но выше фона.
+        this.buildingsContainer = new PIXI.Container();
+        this.buildingsContainer.sortableChildren = true; // Важно для Z-index внутри зданий
+        this.addChild(this.buildingsContainer);
+        
+        this.renderBuildings();
+        
         this.addBottomNavigation();
         this.eventMode='static';
         this.on('pointertap', ()=>this.closeMenu());
@@ -359,14 +468,91 @@ class MainMenuScene extends BaseScene {
         if(this.timerFn) app.ticker.remove(this.timerFn);
         super.destroy(opt);
     }
+    
+    renderBuildings() {
+        this.buildingsContainer.removeChildren();
 
-    addBuildings() {
         const addB = (alias, x, y, type, scale) => {
-            const sp = PIXI.Sprite.from(alias);
-            sp.anchor.set(0.5); sp.scale.set(scale); sp.x=x; sp.y=y;
-            sp.eventMode='static'; sp.cursor='pointer';
-            sp.on('pointertap', (e)=>{ e.stopPropagation(); this.openMenu(sp, type); });
-            this.addChild(sp);
+            const bData = GAME_STATE.buildings[type];
+            const cont = new PIXI.Container();
+            
+            // --- ФИКС БАГА С НАЖАТИЕМ ---
+            // Используем Y координату как Z-index для правильного перекрытия
+            // Чем ниже по экрану (больше Y), тем выше zIndex (ближе к зрителю)
+            cont.x = x; 
+            cont.y = y;
+            cont.zIndex = y; 
+
+            if (bData.isBuilt) {
+                const sp = PIXI.Sprite.from(alias);
+                sp.anchor.set(0.5); sp.scale.set(scale); 
+                sp.eventMode='static'; sp.cursor='pointer';
+                sp.on('pointertap', (e)=>{ 
+                    e.stopPropagation(); // Остановка события, чтобы не кликнулось что-то под зданием
+                    this.openMenu(cont, type); 
+                });
+                cont.addChild(sp);
+            } else {
+                // --- 3D "ПЛИТКА" (ФУНДАМЕНТ) ---
+                const w = 150 * scale * 2.5; 
+                const h = 150 * scale * 2.5; // Базовая высота для логики, но рисовать будем изометрию
+                
+                const g = new PIXI.Graphics();
+                
+                // Рисуем изометрический ромб
+                // Верхняя грань
+                g.poly([
+                    0, -h/3,        // Верх
+                    w/2, 0,         // Право
+                    0, h/3,         // Низ
+                    -w/2, 0         // Лево
+                ]).fill({color:0x111111}); // Темный верх
+                
+                // Боковая грань (толщина) - для 3D эффекта
+                g.poly([
+                    -w/2, 0,
+                    0, h/3,
+                    0, h/3 + 15,
+                    -w/2, 15
+                ]).fill({color:0x000000});
+                
+                g.poly([
+                    0, h/3,
+                    w/2, 0,
+                    w/2, 15,
+                    0, h/3 + 15
+                ]).fill({color:0x000000});
+
+                // Обводка
+                g.moveTo(0, -h/3).lineTo(w/2, 0).lineTo(0, h/3).lineTo(-w/2, 0).closePath().stroke({width:2, color:0xFFFFFF, alpha:0.5});
+
+                cont.addChild(g);
+                
+                // Хитбокс для клика (прозрачный, по форме ромба, чтобы кликать точно)
+                g.eventMode='static'; g.cursor='pointer';
+                g.on('pointertap', (e) => {
+                    e.stopPropagation(); // ВАЖНО: Остановить всплытие, чтобы не кликнуть TownHall под низом
+                    this.tryBuild(type);
+                });
+
+                if(bData.isConstructing) {
+                    const t = new PIXI.Text("...", {fontFamily:'Arial', fontSize:20, fill:0xFFA500, fontWeight:'bold'});
+                    t.anchor.set(0.5); t.y = -10;
+                    cont.addChild(t);
+                    cont.timerLabel = t; 
+                } else {
+                    const plus = new PIXI.Text("+", {fontFamily:'Arial', fontSize:50, fill:0xFFFFFF, fontWeight:'bold'});
+                    plus.anchor.set(0.5); plus.y = -20;
+                    cont.addChild(plus);
+                    
+                    const price = new PIXI.Text(`${bData.buildCost.coin}`, {fontFamily:'Arial', fontSize:16, fill:0xFFD700});
+                    price.anchor.set(0.5); price.y = 20;
+                    cont.addChild(price);
+                }
+            }
+
+            this.buildingsContainer.addChild(cont);
+            bData.visualRef = cont;
         };
 
         const SCALE_CENTER = 0.41;
@@ -380,28 +566,39 @@ class MainMenuScene extends BaseScene {
         addB('building_tank', APP_WIDTH/2 - 190, APP_HEIGHT/2 + 250, 'TANK', SCALE_OTHER);
     }
 
-    openMenu(sprite, type) {
+    tryBuild(type) {
+        const b = GAME_STATE.buildings[type];
+        if(b.isConstructing) return;
+        
+        if(GAME_STATE.resources.coin >= b.buildCost.coin) {
+            GAME_STATE.resources.coin -= b.buildCost.coin;
+            b.isConstructing = true;
+            b.constructionStartTime = Date.now();
+            this.updateTotalPower();
+            this.renderBuildings(); 
+        } else {
+            this.showInfoModal("Стройка", `Нужно ${b.buildCost.coin} монет!`);
+        }
+    }
+
+    openMenu(container, type) {
         this.closeMenu();
         const bData = GAME_STATE.buildings[type];
         if(!bData) return;
 
         const m = new PIXI.Container();
-        m.zIndex=50; 
-        m.x = sprite.x; 
+        m.zIndex=500; 
+        m.x = container.x; 
         
         let yOffsetBase = 70;
-        if(type === 'CENTER') {
-            yOffsetBase = 140; 
-            m.x -= 65; 
-        }
+        if(type === 'CENTER') { yOffsetBase = 140; m.x -= 65; }
         else if(type === 'BANK') yOffsetBase = 120;
         
-        m.y = sprite.y + yOffsetBase; 
+        m.y = container.y + yOffsetBase; 
 
         this.addChild(m);
         this.activeMenu = { container: m, type: type, upLabel: null };
 
-        // UPGRADE BUTTON
         const upBtn = this.createPentagon("UP", 0xFFA500, ()=>{
             if(bData.isUpgrading) return;
             const cost = bData.upgradeCost || {coin:1000};
@@ -421,7 +618,6 @@ class MainMenuScene extends BaseScene {
         m.addChild(upBtn);
         this.activeMenu.upLabel = upBtn.lbl;
 
-        // ACTION BUTTON
         let useTxt = "Вход", useCol = 0x3C8CE7, useAct = ()=>{};
         let infoText = bData.description;
         
@@ -451,7 +647,6 @@ class MainMenuScene extends BaseScene {
         useBtn.x = 70; useBtn.y = 0;
         m.addChild(useBtn);
 
-        // INFO BUTTON
         const iBtnY = 70; 
         const iBtn = new PIXI.Graphics().circle(0, iBtnY, 20).fill({color:0x000000}).stroke({width:2, color:0xFFFFFF});
         iBtn.eventMode='static'; iBtn.cursor='pointer';
@@ -462,17 +657,14 @@ class MainMenuScene extends BaseScene {
         iTxt.anchor.set(0.5); iTxt.y=iBtnY;
         m.addChild(iTxt);
         
-        // --- НОВЫЙ ДИЗАЙН: ШАРИК С УРОВНЕМ ВМЕСТО НАЗВАНИЯ ---
         const levelBubble = new PIXI.Container();
-        levelBubble.y = -85; // Позиция над кнопками
+        levelBubble.y = -85; 
         m.addChild(levelBubble);
 
-        // Сама сфера (шарик)
         const bubbleG = new PIXI.Graphics();
         bubbleG.circle(0,0, 25).fill({color:0x0088FF}).stroke({width:3, color:0xFFFFFF});
         levelBubble.addChild(bubbleG);
 
-        // Цифра уровня внутри
         const lvlNum = new PIXI.Text(`${bData.level}`, {fontFamily:'Arial', fontSize:22, fill:0xFFFFFF, fontWeight:'bold'});
         lvlNum.anchor.set(0.5);
         levelBubble.addChild(lvlNum);
@@ -486,13 +678,22 @@ class MainMenuScene extends BaseScene {
     }
 
     updateMenuTimers() {
+        const now = Date.now();
         if(this.activeMenu && this.activeMenu.upLabel) {
             const b = GAME_STATE.buildings[this.activeMenu.type];
             if(b.isUpgrading) {
-                const rem = Math.ceil((b.upgradeStartTime + b.upgradeDuration - Date.now())/1000);
+                const rem = Math.ceil((b.upgradeStartTime + b.upgradeDuration - now)/1000);
                 this.activeMenu.upLabel.text = rem > 0 ? rem + "s" : "UP";
             } else {
                 if(this.activeMenu.upLabel.text !== "UP") this.activeMenu.upLabel.text = "UP";
+            }
+        }
+        
+        for(let k in GAME_STATE.buildings) {
+            const b = GAME_STATE.buildings[k];
+            if(b.isConstructing && b.visualRef && b.visualRef.timerLabel) {
+                const rem = Math.ceil((b.constructionStartTime + b.buildDuration - now)/1000);
+                b.visualRef.timerLabel.text = rem > 0 ? `${rem}s` : "OK";
             }
         }
     }
@@ -558,43 +759,124 @@ class MainMenuScene extends BaseScene {
     
     addBottomNavigation() {
         const H_POS = APP_HEIGHT - 60; 
-        const SPACING = 150; 
-        const START_X = APP_WIDTH / 2 - (1.5 * SPACING); 
         
+        if(this.navContainer) this.navContainer.destroy({children:true});
+
         const navContainer = new PIXI.Container();
         navContainer.position.set(0, H_POS);
-        navContainer.zIndex = 100; 
+        navContainer.zIndex = 1000; 
         this.addChild(navContainer);
+        this.navContainer = navContainer;
         
-        const bg = new PIXI.Graphics().rect(0, -50, APP_WIDTH, 100).fill({color:0x000000, alpha:0.8});
+        const bg = new PIXI.Graphics().rect(0, -50, APP_WIDTH, 110).fill({color:0x000000, alpha:0.85}).stroke({width:2, color:0x333333, alignment:0});
         navContainer.addChild(bg);
         
         const buttons = [
             { icon: ASSETS.icon_map.alias, text: "Карта", action: ()=>this.showInfoModal("Карта", "Переход на карту (в разработке)") },
             { icon: ASSETS.icon_train.alias, text: "Атака", action: ()=>this.showInfoModal("Атака", "Сцена атаки (в разработке)") },
-            // ОБНОВЛЕННЫЕ ДЕЙСТВИЯ ДЛЯ КНОПОК
             { icon: ASSETS.icon_upgrade.alias, text: "Герои", action: ()=>this.manager.changeScene(HeroesScene) },
+            { icon: ASSETS.icon_friends.alias, text: "Друзья", action: ()=>this.manager.changeScene(FriendsScene) }, // НОВАЯ КНОПКА
             { icon: ASSETS.icon_power_cat.alias, text: "Задания", action: ()=>this.manager.changeScene(QuestsScene) }
         ];
 
+        const btnWidth = APP_WIDTH / buttons.length;
+
         buttons.forEach((btn, i) => {
             const btnCont = new PIXI.Container();
-            btnCont.x = START_X + i * SPACING; 
+            btnCont.x = (i * btnWidth) + (btnWidth / 2); 
             btnCont.y = 0;
             
-            const icon = PIXI.Sprite.from(btn.icon);
-            icon.anchor.set(0.5); icon.scale.set(0.06); icon.y = -15; 
+            const hitArea = new PIXI.Graphics()
+                .rect(-btnWidth/2, -50, btnWidth, 110) 
+                .fill({color:0xFFFFFF, alpha:0.001}); 
+            
+            hitArea.eventMode='static'; 
+            hitArea.cursor='pointer';
+            hitArea.on('pointertap', btn.action);
+            
+            hitArea.on('pointerdown', () => btnCont.scale.set(0.95));
+            hitArea.on('pointerup', () => btnCont.scale.set(1));
+            hitArea.on('pointerupoutside', () => btnCont.scale.set(1));
+
+            btnCont.addChild(hitArea);
+
+            let icon;
+            if(PIXI.Assets.cache.has(btn.icon)) {
+                icon = PIXI.Sprite.from(btn.icon);
+                icon.anchor.set(0.5); icon.scale.set(0.08); icon.y = -10; 
+            } else {
+                // Фолбек, если иконка не найдена
+                icon = new PIXI.Text("?", {fontSize:24, fill:0xFFFFFF});
+                icon.anchor.set(0.5); icon.y=-10;
+            }
+            icon.eventMode = 'none'; 
             
             const text = new PIXI.Text(btn.text, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF, fontWeight:'bold'});
-            text.anchor.set(0.5); text.y = 20; 
+            text.anchor.set(0.5); text.y = 30; 
+            text.eventMode = 'none';
 
-            const clickArea = new PIXI.Graphics().circle(0, 0, 40).fill({color:0x555555, alpha:0.01});
-            clickArea.eventMode='static'; clickArea.cursor='pointer';
-            clickArea.on('pointertap', btn.action);
-            
-            btnCont.addChild(clickArea, icon, text);
+            btnCont.addChild(icon, text);
             navContainer.addChild(btnCont);
         });
+    }
+}
+
+// --- СЦЕНА: ДРУЗЬЯ (FRIENDS) ---
+class FriendsScene extends BaseScene {
+    constructor(manager) { super(manager); }
+
+    init() {
+        super.init();
+        this.addBackgroundCover('fon_academy');
+        this.addTopUI();
+
+        const title = new PIXI.Text("ДРУЗЬЯ", {fontFamily:'Arial', fontSize:36, fill:0xFFD700, fontWeight:'bold', stroke:0x000000, strokeThickness:4});
+        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 120;
+        this.addChild(title);
+
+        // Инфо о бонусе
+        const bonusPanel = new PIXI.Container();
+        bonusPanel.x = APP_WIDTH/2; bonusPanel.y = 220;
+        this.addChild(bonusPanel);
+
+        const bg = new PIXI.Graphics().roundRect(-300, -60, 600, 120, 20).fill({color:0x222222, alpha:0.9}).stroke({width:2, color:0x00FF00});
+        bonusPanel.addChild(bg);
+
+        const t1 = new PIXI.Text("Пригласи друга и получи:", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF});
+        t1.anchor.set(0.5); t1.y = -20;
+        bonusPanel.addChild(t1);
+
+        const t2 = new PIXI.Text("+1000 Coin  и  +1 Gem", {fontFamily:'Arial', fontSize:28, fill:0xFFD700, fontWeight:'bold'});
+        t2.anchor.set(0.5); t2.y = 20;
+        bonusPanel.addChild(t2);
+
+        // Кнопка приглашения
+        const inviteBtn = this.createSimpleButton("ПРИГЛАСИТЬ ДРУГА", ()=>{
+            // Копирование ссылки (симуляция)
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(GAME_STATE.referrals.link).then(() => {
+                    alert("Реферальная ссылка скопирована: " + GAME_STATE.referrals.link);
+                });
+            } else {
+                alert("Твоя ссылка: " + GAME_STATE.referrals.link);
+            }
+        }, 0x3C8CE7, 300, 70, 20);
+        inviteBtn.x = APP_WIDTH/2; inviteBtn.y = 350;
+        this.addChild(inviteBtn);
+
+        // Список друзей (Заглушка)
+        const listY = 450;
+        const listTitle = new PIXI.Text("Твои рефералы (0):", {fontFamily:'Arial', fontSize:22, fill:0xAAAAAA});
+        listTitle.anchor.set(0.5); listTitle.x = APP_WIDTH/2; listTitle.y = listY;
+        this.addChild(listTitle);
+
+        const emptyText = new PIXI.Text("Пока никого нет...", {fontFamily:'Arial', fontSize:20, fill:0x555555});
+        emptyText.anchor.set(0.5); emptyText.x = APP_WIDTH/2; emptyText.y = listY + 50;
+        this.addChild(emptyText);
+
+        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
+        back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
+        this.addChild(back);
     }
 }
 
@@ -1175,6 +1457,7 @@ function gameTick() {
     const now = Date.now();
     let updated = false;
 
+    // Очередь юнитов
     for(let k in GAME_STATE.unitQueues) {
         const q = GAME_STATE.unitQueues[k];
         if(q.length > 0) {
@@ -1186,8 +1469,11 @@ function gameTick() {
         }
     }
 
+    // Апгрейды и ПОСТРОЙКА зданий
     for(let k in GAME_STATE.buildings) {
         const b = GAME_STATE.buildings[k];
+        
+        // Логика АПГРЕЙДА (уровня)
         if(b.isUpgrading) {
             if(now >= b.upgradeStartTime + b.upgradeDuration) {
                 b.level++;
@@ -1197,8 +1483,23 @@ function gameTick() {
                 updated = true;
             }
         }
+
+        // Логика ПОСТРОЙКИ (с нуля)
+        if(b.isConstructing) {
+            if(now >= b.constructionStartTime + b.buildDuration) {
+                b.isBuilt = true;
+                b.isConstructing = false;
+                updated = true;
+                
+                // Если мы в главном меню, надо перерисовать здания
+                if(SceneManager.currentScene instanceof MainMenuScene) {
+                    SceneManager.currentScene.renderBuildings();
+                }
+            }
+        }
     }
 
+    // Доход
     if(now - GAME_STATE.lastIncomeTime >= 1000) {
         if(GAME_STATE.incomePerSecond > 0) {
             if(GAME_STATE.resources.coin < GAME_STATE.storageCapacity.coin) {
@@ -1214,6 +1515,7 @@ function gameTick() {
 
     if(updated && SceneManager.currentScene) {
         SceneManager.currentScene.updateTotalPower(); 
+        if(SceneManager.currentScene.addTopUI) SceneManager.currentScene.addTopUI();
     }
 }
 
@@ -1223,7 +1525,6 @@ async function init() {
     await app.init({ width: APP_WIDTH, height: APP_HEIGHT, background: '#000000' });
     
     // --- ВАЖНЫЙ ФИКС ДЛЯ IPHONE ---
-    // Устанавливаем стили для предотвращения системных жестов
     app.canvas.style.touchAction = 'none'; 
     app.canvas.style.overscrollBehavior = 'none';
     document.body.style.overscrollBehavior = 'none';
