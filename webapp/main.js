@@ -196,7 +196,97 @@ function updateGameCalculations() {
     }
     GAME_STATE.incomePerSecond = totalIncomePerHour / 3600; 
 }
+// =========================================================================
+// ================== СОХРАНЕНИЕ / ЗАГРУЗКА ИГРЫ ===========================
+// =========================================================================
 
+const SAVE_KEY = 'cryptocats_save_v1';
+
+function saveGame() {
+    try {
+        GAME_STATE.lastSaveTime = Date.now();
+        const serializedState = JSON.stringify(GAME_STATE);
+        localStorage.setItem(SAVE_KEY, serializedState);
+    } catch (e) {
+        console.error("Ошибка сохранения игры:", e);
+    }
+}
+
+function loadGame() {
+    try {
+        const serializedState = localStorage.getItem(SAVE_KEY);
+        if (serializedState === null) {
+            console.log("Сохранение не найдено. Начинаем новую игру.");
+            return; 
+        }
+        
+        const loadedState = JSON.parse(serializedState);
+        
+        // --- ОБРАБОТКА ОФФЛАЙН-ПРОГРЕССА ---
+        const now = Date.now();
+        // Используем now как запасное время, если lastSaveTime отсутствует (для очень старых сохранений)
+        const timeSinceLastSave = now - (loadedState.lastSaveTime || now); 
+        const secondsOffline = Math.floor(timeSinceLastSave / 1000);
+        
+        if (secondsOffline > 1) { 
+            let incomeGained = (loadedState.incomePerSecond || 1) * secondsOffline;
+            
+            const currentCoin = loadedState.resources.coin || 0;
+            const maxCoin = loadedState.storageCapacity.coin || Infinity;
+            
+            // Расчет монеты
+            if (currentCoin < maxCoin) {
+                 const coinGain = Math.min(incomeGained, maxCoin - currentCoin);
+                 loadedState.resources.coin = currentCoin + coinGain;
+                 if (coinGain > 0) console.log(`Оффлайн-прогресс: +${coinGain.toFixed(0)} монет.`);
+            }
+            
+            // Расчет рыбы 
+            let fishGained = (loadedState.fishIncomePerSecond || 0) * secondsOffline;
+            loadedState.resources.fish = (loadedState.resources.fish || 0) + fishGained;
+            if (fishGained > 0) console.log(`Оффлайн-прогресс: +${fishGained.toFixed(0)} рыбы.`);
+        }
+        
+        // Восстанавливаем состояние игры
+        Object.assign(GAME_STATE, loadedState);
+        
+        // Очистка и перерасчет таймеров
+        
+        // 1. Здания: Завершаем все, что должно было закончиться оффлайн
+        for (let k in GAME_STATE.buildings) {
+            const b = GAME_STATE.buildings[k];
+            
+            // Постройка
+            if (b.isConstructing && b.constructionStartTime + b.buildDuration < now) {
+                b.isBuilt = true;
+                b.isConstructing = false;
+            }
+            
+            // Апгрейд
+            if (b.isUpgrading && b.upgradeStartTime + b.upgradeDuration < now) {
+                b.level++;
+                b.isUpgrading = false;
+            }
+        }
+        
+        // 2. Юниты: Завершаем все, что должно было закончиться оффлайн
+        for(let k in GAME_STATE.unitQueues) {
+            const q = GAME_STATE.unitQueues[k];
+            // Чистим те, которые должны были быть готовы
+            while (q.length > 0 && q[0].finish <= now) {
+                const done = q.shift();
+                GAME_STATE.units[done.type]++;
+            }
+        }
+        
+        console.log("Игра загружена успешно.");
+
+    } catch (e) {
+        console.error("Ошибка загрузки игры. Начинаем новую игру.", e);
+        // Если ошибка, удаляем испорченное сохранение
+        localStorage.removeItem(SAVE_KEY); 
+    }
+}
 // =========================================================================
 // ================== БАЗОВЫЙ КЛАСС ========================================
 // =========================================================================
@@ -481,7 +571,8 @@ class MainMenuScene extends BaseScene {
             // Чем ниже по экрану (больше Y), тем выше zIndex (ближе к зрителю)
             cont.x = x; 
             cont.y = y;
-            cont.zIndex = y; 
+             cont.zIndex = y + (type === 'CENTER' ? -5000 : 0);
+
 
             if (bData.isBuilt) {
                 const sp = PIXI.Sprite.from(alias);
@@ -591,9 +682,18 @@ class MainMenuScene extends BaseScene {
         m.x = container.x; 
         
         let yOffsetBase = 70;
-        if(type === 'CENTER') { yOffsetBase = 140; m.x -= 65; }
-        else if(type === 'BANK') yOffsetBase = 120;
-        
+
+// --- ТАУН ХОЛЛ (CENTER): кнопки ровно под зданием ---
+if(type === 'CENTER') {
+    yOffsetBase = 120;   // опускаем меню под здание
+    m.x -= 65;           // выравниваем по центру
+}
+
+// --- БАНК (BANK): кнопки немного выше ---
+else if(type === 'BANK') {
+    yOffsetBase = 90;    // поднимаем меню выше
+}
+
         m.y = container.y + yOffsetBase; 
 
         this.addChild(m);
@@ -1072,40 +1172,47 @@ class HeroesScene extends BaseScene {
     }
 }
 
-// --- СЦЕНА: CRYPTO LAB (ИССЛЕДОВАНИЯ) - BLUE NEON STYLE ---
+// --- СЦЕНА: CRYPTO LAB (ИССЛЕДОВАНИЯ) - BLUE NEON + "паутинка" --- 
 class CryptoLabScene extends BaseScene {
     constructor(manager) { super(manager); }
 
     init() {
         super.init();
         this.addBackgroundCover('fon_academy');
-        
-        // --- ФИКС СКРОЛЛА ---
-        this.viewH = APP_HEIGHT - 100; 
+
+        // --- Скролл зона ---
+        this.viewY = 80;
+        this.viewH = APP_HEIGHT - 140;
         this.scrollContent = new PIXI.Container();
-        this.scrollContent.y = 0; 
-        
-        const mask = new PIXI.Graphics().rect(0, 80, APP_WIDTH, this.viewH).fill(0xFFFFFF);
+        this.scrollContent.y = 0;
+
+        // Маска и контейнер
+        const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
         this.addChild(mask);
         this.scrollContent.mask = mask;
         this.addChild(this.scrollContent);
 
+        // Контейнер для узлов (чтобы было проще ориентироваться)
+        this.nodesContainer = new PIXI.Container();
+        this.linesLayer = new PIXI.Graphics(); // линии неона
+        this.scrollContent.addChild(this.linesLayer);
+        this.scrollContent.addChild(this.nodesContainer);
+
         this.drawTechTree();
 
         this.addTopUI();
-
         const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
         back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
         this.addChild(back);
 
-        // --- ЛОГИКА СКРОЛЛА ---
+        // --- ЛОГИКА СКРОЛЛА (drag) ---
         this.isDragging = false;
         this.lastY = 0;
-        
-        const inputBg = new PIXI.Graphics().rect(0,80,APP_WIDTH, this.viewH).fill({color:0x000000, alpha:0.01});
+
+        const inputBg = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill({color:0x000000, alpha:0.01});
         inputBg.eventMode = 'static';
-        this.addChildAt(inputBg, 0); 
-        
+        this.addChildAt(inputBg, 0);
+
         inputBg.on('pointerdown', (e)=>{
             this.isDragging = true;
             this.lastY = e.global.y;
@@ -1118,29 +1225,83 @@ class CryptoLabScene extends BaseScene {
                 this.clampScroll();
             }
         });
-        
         inputBg.on('pointerup', ()=>this.isDragging=false);
         inputBg.on('pointerupoutside', ()=>this.isDragging=false);
     }
 
     clampScroll() {
-        if(this.scrollContent.y > 100) this.scrollContent.y = 100; 
-        if(this.scrollContent.y < -1500) this.scrollContent.y = -1500; 
+        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
+        // высота содержимого: вычислим примерную нижнюю границу (если узлов мало, ставим -800)
+        const contentHeight = (this._computedMaxY || 1200);
+        const minY = Math.min(-contentHeight + this.viewH + 100, -150); // не опускаем слишком далеко
+        if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
     drawTechTree() {
+        // Очистка
+        this.nodesContainer.removeChildren();
+        this.linesLayer.clear();
+
         const rootX = APP_WIDTH/2;
-        let startY = 150; 
+        let startY = 150;
 
-        const g = new PIXI.Graphics();
-        this.scrollContent.addChild(g);
-        // BLUE NEON STYLE
-        g.stroke({width: 4, color: 0x00FFFF, alpha: 0.8});
+        const nodes = []; // будем собирать позиции, чтобы потом соединять
 
-        // --- 1. КОРНЕВОЙ УЗЕЛ (Base Grade) ---
-        this.createNode(rootX, startY, "Base Grade", "🏠");
+        // Helper: добавляем узел (возвращает объект с x,y,display)
+        const addNode = (x,y,label,iconChar, locked) => {
+            const c = new PIXI.Container();
+            c.x = x; c.y = y;
+            c.eventMode = 'static';
+            this.nodesContainer.addChild(c);
 
-        // --- 2. РАЗВИЛКА НА 4 ВЕТКИ (Сразу от корня) ---
+            // НЕОН КРУГ (фон)
+            const bg = new PIXI.Graphics()
+                .beginFill(0x001122)
+                .lineStyle(3, 0x00FFFF, 0.9)
+                .drawCircle(0,0,40)
+                .endFill();
+            c.addChild(bg);
+
+            // Иконка (эмоджи/текст)
+            const icon = new PIXI.Text(iconChar, {fontSize:28});
+            icon.anchor.set(0.5);
+            c.addChild(icon);
+
+            // Надпись
+            const lbl = new PIXI.Text(label, {fontFamily:'Arial', fontSize:12, fill:0xCCFFFF, fontWeight:'bold', align:'center', wordWrap:true, wordWrapWidth:120});
+            lbl.anchor.set(0.5,0); lbl.y = 46;
+            c.addChild(lbl);
+
+            // Внешняя неоновая "аура" - добавляем слабый круг (для эффекта glow)
+            const aura = new PIXI.Graphics();
+            aura.beginFill(0x00FFFF, 0.06).drawCircle(0,0,60).endFill();
+            aura.y = 0; aura.x = 0;
+            c.addChildAt(aura, 0);
+
+            if(locked) {
+                // затемняем и добавляем замок
+                const cover = new PIXI.Graphics().beginFill(0x000000, 0.6).drawCircle(0,0,40).endFill();
+                c.addChild(cover);
+                const lock = new PIXI.Text("🔒", {fontSize:22});
+                lock.anchor.set(0.5);
+                c.addChild(lock);
+                const dev = new PIXI.Text("В РАЗРАБОТКЕ", {fontFamily:'Arial', fontSize:10, fill:0xFF5555, fontWeight:'bold'});
+                dev.anchor.set(0.5); dev.y = 70;
+                c.addChild(dev);
+                c.interactive = false; // нет клика
+            } else {
+                c.on('pointertap', ()=>this.showInfoModal(label, "Исследование пока недоступно."));
+            }
+
+            nodes.push({x, y, cont: c});
+            this._computedMaxY = Math.max((this._computedMaxY || 0), y + 200);
+            return c;
+        };
+
+        // Рисуем структуру подобно старому - но теперь собираем nodes и рисуем НЕОНОВЫЕ линии
+        // Корневой узел
+        addNode(rootX, startY, "Base Grade", "🏠");
+
         const branches = [
             { offsetX: -270, name: "Economy", icon: "💰" },
             { offsetX: -90,  name: "Units", icon: "⚔️" },
@@ -1148,71 +1309,86 @@ class CryptoLabScene extends BaseScene {
             { offsetX: 270,  name: "Raids", icon: "🔥" }
         ];
 
-        const branchStartY = startY + 150; // Y позиция голов веток
+        const branchStartY = startY + 150;
 
         branches.forEach(b => {
             const bX = rootX + b.offsetX;
-            
-            // Линия от Корня к Голове ветки
-            g.moveTo(rootX, startY);
-            g.lineTo(bX, branchStartY);
 
-            // Рисуем 4 грейда вниз для каждой ветки
+            // линия от корня к голове ветки (нарисуем позже)
+            // рисуем 4 грейда
             let currentY = branchStartY;
             for(let i=1; i<=4; i++) {
-                // Если не первый узел, рисуем линию от предыдущего
-                if(i > 1) {
-                    g.moveTo(bX, currentY - 150);
-                    g.lineTo(bX, currentY);
-                }
-
-                this.createNode(bX, currentY, `${b.name} ${i}`, b.icon);
-                
-                // Если это последний (4-й) грейд, рисуем линию к Tier 2 замку
+                // добавляем узел
+                const isLocked = false;
+                addNode(bX, currentY, `${b.name} ${i}`, b.icon, isLocked);
                 if(i === 4) {
-                    g.moveTo(bX, currentY);
-                    g.lineTo(bX, currentY + 150);
-                    this.createNode(bX, currentY + 150, "Tier 2", "🔒");
+                    // Tier2 замок (locked)
+                    addNode(bX, currentY + 150, "Tier 2", "🔒", true);
                 }
-
-                currentY += 150; // Шаг вниз
+                currentY += 150;
             }
         });
 
+        // Теперь рисуем неоновые линии (паутину) между связанными узлами.
+        // Простая логика: соединяем каждый узел с ближайшим выше по Y (имитация дерева)
+        // Соберём все узлы из nodesContainer
+        const allNodes = this.nodesContainer.children.filter(c => c.x !== undefined);
+        // Преобразуем в массив позиций
+        const positions = allNodes.map(c => ({x: c.x, y: c.y}));
+
+        // Для "паутинки" соединим корень с каждой головы ветки и каждую пару вертикально
+        this.linesLayer.lineStyle(4, 0x00FFFF, 0.7);
+        // соединяем root с heads
+        const rootPos = {x: rootX, y: startY};
+        branches.forEach(b => {
+            const headX = rootX + b.offsetX, headY = branchStartY;
+            this._drawNeonLine(this.linesLayer, rootPos.x, rootPos.y, headX, headY);
+            // vertical chain down the branch
+            for(let i=0;i<4;i++){
+                const y1 = branchStartY + i*150;
+                const y2 = branchStartY + (i+1)*150;
+                this._drawNeonLine(this.linesLayer, headX, y1, headX, y2);
+            }
+        });
+
+        // дополнительно — соединения между близкими соседними ветками (чтобы выглядела как сеть)
+        for(let i=0;i<branches.length-1;i++){
+            const x1 = rootX + branches[i].offsetX;
+            const x2 = rootX + branches[i+1].offsetX;
+            const yline = branchStartY + 150;
+            this._drawNeonLine(this.linesLayer, x1, yline, x2, yline);
+        }
+
+        // Заголовок
         const title = new PIXI.Text("RESEARCH LAB", {fontFamily:'Arial', fontSize:32, fill:0x00FFFF, align:'center', fontWeight:'bold', dropShadow:true, dropShadowColor:0x0000FF, dropShadowBlur:10});
         title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 60;
         this.scrollContent.addChild(title);
-        
-        this.scrollContent.addChildAt(g, 0);
+
+        // send linesLayer behind nodes
+        this.scrollContent.addChildAt(this.linesLayer, 0);
     }
 
-    createNode(x, y, label, iconChar) {
-        const c = new PIXI.Container();
-        c.x = x; c.y = y;
-        this.scrollContent.addChild(c);
+    // helper: рисует "неоновую" линию между двумя точками с небольшим градиентом/эффектом
+    _drawNeonLine(g, x1, y1, x2, y2) {
+        // основной свет
+        g.lineStyle(4, 0x00FFFF, 0.85);
+        g.moveTo(x1, y1);
+        g.lineTo(x2, y2);
 
-        // НЕОНОВЫЙ КРУГ
-        const bg = new PIXI.Graphics()
-            .circle(0,0,40)
-            .fill({color:0x001133})
-            .stroke({width:3, color:0x00FFFF}); 
-        c.addChild(bg);
+        // слабый glow (повторяем тонкой линией с альфа)
+        g.lineStyle(8, 0x00FFFF, 0.12);
+        g.moveTo(x1, y1);
+        g.lineTo(x2, y2);
 
-        // Иконка
-        const icon = new PIXI.Text(iconChar, {fontSize:28});
-        icon.anchor.set(0.5);
-        c.addChild(icon);
-
-        // Подпись
-        const lbl = new PIXI.Text(label, {fontFamily:'Arial', fontSize:14, fill:0xCCFFFF, fontWeight:'bold', align:'center', wordWrap:true, wordWrapWidth: 100});
-        lbl.anchor.set(0.5, 0); lbl.y = 45; 
-        c.addChild(lbl);
-        
-        c.eventMode = 'static';
-        c.cursor = 'pointer';
-        c.on('pointertap', ()=>this.showInfoModal(label, "Исследование пока недоступно."));
+        // пару точек "искр"
+        const midX = (x1 + x2)/2;
+        const midY = (y1 + y2)/2;
+        const sparks = new PIXI.Graphics();
+        sparks.beginFill(0xFFFFFF, 0.9).drawCircle(midX, midY, 2).endFill();
+        this.scrollContent.addChild(sparks);
     }
 }
+
 
 class MarketScene extends BaseScene {
     constructor(manager) { super(manager); }
@@ -1299,7 +1475,7 @@ class MarketScene extends BaseScene {
     }
 }
 
-// --- СЦЕНА: АКАДЕМИЯ (НАЙМ БОЕВЫХ) ---
+// --- СЦЕНА: АКАДЕМИЯ (НАЙМ БОЕВЫХ) --- 
 class AcademyScene extends BaseScene {
     constructor(manager) {
         super(manager);
@@ -1308,22 +1484,54 @@ class AcademyScene extends BaseScene {
 
     init() {
         super.init();
-        this.addBackgroundCover('fon_academy');
-        this.addTopUI(); 
-        
-        const title = new PIXI.Text("КАЗАРМА (4 ТИПА ЮНИТОВ)", {fontFamily:'Arial', fontSize:32, fill:0x00FF00, fontWeight:'bold'});
+        this.addBackgroundCover('fon_academy'); // Убедись, что fon_academy есть в ASSETS, иначе будет черный фон
+        this.addTopUI();
+
+        // Заголовок сцены
+        const title = new PIXI.Text("КАЗАРМА (АРМИЯ)", {fontFamily:'Arial', fontSize:32, fill:0x00FF00, fontWeight:'bold', stroke: 0x000000, strokeThickness: 4});
         title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
         this.addChild(title);
 
-        this.unitPanels = []; 
-        this.renderUnits();
+        // Область прокрутки (Scroll View)
+        this.viewY = 140;
+        this.viewH = APP_HEIGHT - 220;
+        this.scrollContent = new PIXI.Container();
+        this.scrollContent.y = 0;
 
-        const back = this.createSimpleButton("Назад", ()=>{ 
-            this.manager.changeScene(MainMenuScene); 
-        }, 0xFFD700);
+        // Маска для обрезания лишнего
+        const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
+        this.addChild(mask);
+        this.scrollContent.mask = mask;
+        this.addChild(this.scrollContent);
+
+        // Рендерим панели юнитов
+        this.unitPanels = [];
+        this.renderUnitsInScroll();
+
+        // Кнопка НАЗАД
+        const back = this.createSimpleButton("Назад", ()=>{ this.manager.changeScene(MainMenuScene); }, 0xFFD700);
         back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
         this.addChild(back);
 
+        // Логика скролла (перетаскивание пальцем/мышкой)
+        this.isDragging = false; this.lastY = 0;
+        const inputBg = new PIXI.Graphics().rect(0,this.viewY,APP_WIDTH,this.viewH).fill({color:0x000000, alpha:0.01});
+        inputBg.eventMode='static';
+        this.addChildAt(inputBg, 0);
+
+        inputBg.on('pointerdown', (e)=>{ this.isDragging = true; this.lastY = e.global.y; });
+        inputBg.on('globalpointermove', (e)=>{ 
+            if(this.isDragging) {
+                const dy = e.global.y - this.lastY;
+                this.scrollContent.y += dy;
+                this.lastY = e.global.y;
+                this.clampScroll();
+            }
+        });
+        inputBg.on('pointerup', ()=>this.isDragging=false);
+        inputBg.on('pointerupoutside', ()=>this.isDragging=false);
+
+        // Запускаем обновление прогресс-баров
         this.updFn = ()=>this.updateBars();
         app.ticker.add(this.updFn);
     }
@@ -1333,23 +1541,68 @@ class AcademyScene extends BaseScene {
         super.destroy(opt);
     }
 
-    renderUnits() {
-        let y = 160;
-        for(let key in UNIT_DATA) {
-            this.createPanel(key, UNIT_DATA[key], y);
-            y += 180;
-        }
+    // Ограничение прокрутки, чтобы не улетало далеко
+    clampScroll() {
+        if(this.scrollContent.y > 80) this.scrollContent.y = 80;
+        const contentHeight = (this._academyContentHeight || 1000);
+        const minY = Math.min(-contentHeight + this.viewH + 80, -50);
+        if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
-    createPanel(typeKey, data, y) {
-        const tier = data.T1;
+    renderUnitsInScroll() {
+        this.scrollContent.removeChildren();
+        let y = 10;
+        
+        // --- ЗАГОЛОВОК TIER 1 ---
+        const t1Title = new PIXI.Text("TIER 1 - НОВИЧКИ", {fontFamily:'Arial', fontSize:24, fill:0xAAAAAA, fontWeight:'bold'});
+        t1Title.x = 20; t1Title.y = y;
+        this.scrollContent.addChild(t1Title);
+        y += 40;
+
+        // --- ЦИКЛ 1: Сначала рисуем ВСЕХ юнитов T1 ---
+        for(let key in UNIT_DATA) {
+            const data = UNIT_DATA[key];
+            // Создаем панель T1 (locked = false)
+            const p = this._createUnitPanel(key, data, y, false);
+            this.scrollContent.addChild(p);
+            y += 180; // высота панели + отступ
+        }
+
+        y += 30; // Большой отступ между Тирами
+
+        // --- ЗАГОЛОВОК TIER 2 ---
+        const t2Title = new PIXI.Text("TIER 2 - ПРОФИ (Закрыто)", {fontFamily:'Arial', fontSize:24, fill:0xAAAAAA, fontWeight:'bold'});
+        t2Title.x = 20; t2Title.y = y;
+        this.scrollContent.addChild(t2Title);
+        y += 40;
+
+        // --- ЦИКЛ 2: Потом рисуем ВСЕХ юнитов T2 ---
+        for(let key in UNIT_DATA) {
+            const data = UNIT_DATA[key];
+            // Создаем панель T2 (locked = true). 
+            // Хитрость: мы передаем данные T2 в поле T1 функции, чтобы она их отрисовала
+            const dummyData = { T1: data.T2, icon: data.icon };
+            const locked = this._createUnitPanel(key, dummyData, y, true);
+            this.scrollContent.addChild(locked);
+            y += 160;
+        }
+
+        this._academyContentHeight = y + 50;
+    }
+
+    // Создание одной карточки юнита
+    _createUnitPanel(typeKey, data, y, locked=false) {
+        const tier = data.T1; // Берем данные (имя, цена, сила)
         const p = new PIXI.Container();
         p.x = 10; p.y = y;
-        this.addChild(p);
 
-        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, 170, 10).fill({color:0x202020, alpha:0.9}).stroke({width:2, color:0x555555});
+        // Фон карточки
+        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, locked ? 140 : 170, 10)
+            .fill({color: locked ? 0x151515 : 0x222222, alpha:0.95})
+            .stroke({width:2, color: locked ? 0x333333 : 0x555555});
         p.addChild(bg);
 
+        // Иконка
         const iconAlias = data.icon || 'icon_power_cat';
         if(PIXI.Assets.cache.has(iconAlias)){
             const ic = PIXI.Sprite.from(iconAlias);
@@ -1357,62 +1610,91 @@ class AcademyScene extends BaseScene {
             p.addChild(ic);
         }
 
-        const name = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF, fontWeight:'bold'});
-        name.x=100; name.y=10; p.addChild(name);
+        // Название
+        const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill: locked ? 0x777777 : 0xFFFFFF, fontWeight:'bold'});
+        nameTxt.x=100; nameTxt.y=10; p.addChild(nameTxt);
 
-        const costTxt = this.formatCost(tier.cost);
-        const cost = new PIXI.Text(`Цена: ${costTxt}`, {fontFamily:'Arial', fontSize:16, fill:0xFFD700});
+        // Цена
+        const costTxt = this.formatCost(tier.cost || {});
+        const cost = new PIXI.Text(`Цена: ${costTxt}`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0xFFD700});
         cost.x=100; cost.y=40; p.addChild(cost);
-        
-        const powerInfo = new PIXI.Text(`Мощь: +${tier.power}`, {fontFamily:'Arial', fontSize:16, fill:0x00FFFF});
+
+        // Сила
+        const powerInfo = new PIXI.Text(`Мощь: +${tier.power || 0}`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0x00FFFF});
         powerInfo.x=100; powerInfo.y=65; p.addChild(powerInfo);
 
-        let count = 1;
-        const cntLbl = new PIXI.Text("1", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF});
-        cntLbl.anchor.set(0.5); cntLbl.x = APP_WIDTH - 160; cntLbl.y = 50;
-        p.addChild(cntLbl);
+        if(!locked) {
+            // -- Если открыто (T1) --
+            
+            // Счетчик количества для найма
+            let count = 1;
+            const cntLbl = new PIXI.Text("1", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF, fontWeight:'bold'});
+            cntLbl.anchor.set(0.5); cntLbl.x = APP_WIDTH - 160; cntLbl.y = 50;
+            p.addChild(cntLbl);
 
-        const btnMinus = this.createSimpleButton("-", ()=>{ if(count>1) count--; cntLbl.text=count; }, 0xDC3545, 40,40,5);
-        btnMinus.x = APP_WIDTH - 210; btnMinus.y = 50;
-        p.addChild(btnMinus);
+            // Кнопка МИНУС
+            const btnMinus = this.createSimpleButton("-", ()=>{ 
+                if(count > 1) { count--; cntLbl.text = count; }
+            }, 0xDC3545, 40, 40, 5);
+            btnMinus.x = APP_WIDTH - 210; btnMinus.y = 50;
+            p.addChild(btnMinus);
 
-        const btnPlus = this.createSimpleButton("+", ()=>{ count++; cntLbl.text=count; }, 0x28A745, 40,40,5);
-        btnPlus.x = APP_WIDTH - 110; btnPlus.y = 50;
-        p.addChild(btnPlus);
+            // Кнопка ПЛЮС (ВОТ ЗДЕСЬ БЫЛ ВОПРОС)
+            const btnPlus = this.createSimpleButton("+", ()=>{ 
+                count++; cntLbl.text = count; 
+            }, 0x28A745, 40, 40, 5);
+            btnPlus.x = APP_WIDTH - 110; btnPlus.y = 50;
+            p.addChild(btnPlus);
 
-        const hireBtn = this.createSimpleButton("НАЙМ", ()=>{
-            this.startTrain(typeKey, count, tier.cost, tier.time, tier.power);
-            count=1; cntLbl.text="1";
-        }, 0x00FF00, 120, 40, 10);
-        hireBtn.x = APP_WIDTH - 80; hireBtn.y = 110;
-        p.addChild(hireBtn);
+            // Кнопка НАЙМ
+            const hireBtn = this.createSimpleButton("НАЙМ", ()=>{
+                console.log("Пытаюсь нанять:", typeKey, "кол-во:", count);
+                this.startTrain(typeKey, count, tier.cost || {}, tier.time || 1, tier.power || 0);
+                count = 1; cntLbl.text = "1"; // сброс после нажатия
+            }, 0x00FF00, 120, 40, 10);
+            hireBtn.x = APP_WIDTH - 80; hireBtn.y = 110;
+            p.addChild(hireBtn);
 
-        const barContainer = new PIXI.Container();
-        barContainer.position.set(100, 145);
-        p.addChild(barContainer);
+            // Прогресс бар
+            const barContainer = new PIXI.Container();
+            barContainer.position.set(100, 145);
+            p.addChild(barContainer);
+            const barBg = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x000000);
+            barContainer.addChild(barBg);
+            const barFill = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x00FF00);
+            barFill.width = 0;
+            barContainer.addChild(barFill);
+            const qLbl = new PIXI.Text("", {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
+            qLbl.x = 100; qLbl.y = 125;
+            p.addChild(qLbl);
 
-        const barBg = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x000000);
-        barContainer.addChild(barBg);
-        
-        const barFill = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x00FF00);
-        barFill.width = 0; 
-        barContainer.addChild(barFill);
+            this.unitPanels.push({ type: typeKey, bar: barFill, qLabel: qLbl });
+        } else {
+            // -- Если закрыто (T2) --
+            const lock = new PIXI.Text("🔒", {fontSize:28});
+            lock.anchor.set(0.5); lock.x = APP_WIDTH - 80; lock.y = 50;
+            p.addChild(lock);
 
-        const qLbl = new PIXI.Text("", {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
-        qLbl.x = 100; qLbl.y = 125;
-        p.addChild(qLbl);
+            const dev = new PIXI.Text("Нужен Tier 2", {fontFamily:'Arial', fontSize:16, fill:0xFF5555, fontWeight:'bold'});
+            dev.anchor.set(0.5); dev.x = APP_WIDTH/2 - 20; dev.y = 90;
+            p.addChild(dev);
+        }
 
-        this.unitPanels.push({ type: typeKey, bar: barFill, qLabel: qLbl });
+        return p;
     }
 
     startTrain(type, count, costObj, time, power) {
         let ok = true;
-        for(let r in costObj) if(GAME_STATE.resources[r] < costObj[r] * count) ok=false;
+        // Проверяем ресурсы
+        for(let r in costObj) {
+            if(GAME_STATE.resources[r] < costObj[r] * count) ok = false;
+        }
 
         if(ok) {
+            // Списываем ресурсы
             for(let r in costObj) GAME_STATE.resources[r] -= costObj[r] * count;
-            this.addTopUI();
-            
+            this.addTopUI(); // Обновляем UI ресурсов
+
             const queue = GAME_STATE.unitQueues[type];
             let startTime = Date.now();
             if(queue.length > 0) startTime = Math.max(startTime, queue[queue.length-1].finish);
@@ -1423,7 +1705,8 @@ class AcademyScene extends BaseScene {
                 startTime = finish;
             }
         } else {
-            this.showInfoModal("Ошибка", "Не хватает ресурсов!");
+            // ВОТ ЗДЕСЬ ПОЯВЛЯЕТСЯ ОКНО С КНОПКОЙ "ОК"
+            this.showInfoModal("Мало ресурсов", "Не хватает денег или рыбы!");
         }
     }
 
@@ -1431,7 +1714,7 @@ class AcademyScene extends BaseScene {
         const now = Date.now();
         this.unitPanels.forEach(p => {
             const q = GAME_STATE.unitQueues[p.type];
-            if(q.length > 0) {
+            if(q && q.length > 0) {
                 const cur = q[0];
                 if(now >= cur.startTime) {
                     const tot = cur.finish - cur.startTime;
@@ -1452,6 +1735,8 @@ class AcademyScene extends BaseScene {
 // =========================================================================
 // ================== ГЛОБАЛЬНЫЙ ТИКЕР (ЛОГИКА) ============================
 // =========================================================================
+
+let lastSaveTime = Date.now(); // Глобальная переменная для сохранения
 
 function gameTick() {
     const now = Date.now();
@@ -1517,6 +1802,11 @@ function gameTick() {
         SceneManager.currentScene.updateTotalPower(); 
         if(SceneManager.currentScene.addTopUI) SceneManager.currentScene.addTopUI();
     }
+    // --- АВТОСОХРАНЕНИЕ --- <-- ВСТАВИТЬ ЭТОТ БЛОК СЮДА
+    if(now - lastSaveTime > 10000) { // Сохраняем каждые 10 секунд
+        saveGame();
+        lastSaveTime = now;
+    }
 }
 
 async function init() {
@@ -1542,7 +1832,11 @@ async function init() {
     }
 
     SceneManager = new SceneController(app);
-    updateGameCalculations();
+    
+    // ! ИСПРАВЛЕНИЕ: ЗАГРУЗКА СОСТОЯНИЯ ИГРЫ !
+    loadGame(); // <-- ЭТО ВЫЗЫВАЕТ ЗАГРУЗКУ
+    
+    updateGameCalculations(); // <-- ТЕПЕРЬ СТАТИСТИКА ПЕРЕСЧИТЫВАЕТСЯ ПОСЛЕ ЗАГРУЗКИ
     
     SceneManager.changeScene(MainMenuScene);
     
