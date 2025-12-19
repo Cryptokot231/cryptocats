@@ -5,39 +5,52 @@ const APP_HEIGHT = 1280;
 let app;
 let SceneManager; 
 
+// --- ДАННЫЕ ЗДАНИЙ (ДОБАВЛЯЕМ НОВЫЙ ОБЪЕКТ!) ---
+const BUILDING_DATA = {
+    DEFENSE_TOWER: {
+        type: 'DEFENSE_TOWER',
+        name: 'Defense Tower',
+        levels: {
+            1: { cost: { coin: 500, fish: 50 }, effect: { defenseLimit: 50 } },
+            2: { cost: { coin: 1000, fish: 100 }, effect: { defenseLimit: 100 } },
+            3: { cost: { coin: 2500, fish: 250 }, effect: { defenseLimit: 200 } }
+        }
+    }
+};
+
 // --- ДАННЫЕ ЮНИТОВ (4 ТИПА) ---
 const UNIT_DATA = {
     ScoutCat: {
         type: 'ScoutCat',
         icon: 'icon_res_energy', 
-        T1: { name: 'Scout T1', cost: { coin: 100 }, time: 3, power: 15 }, 
-        T2: { name: 'Scout T2', cost: { fish: 500 }, time: 6, power: 75 }, 
-        T3: { name: 'Scout T3', cost: { fish: 2500 }, time: 20, power: 375 }, 
-        T4: { name: 'Scout T4', cost: { fish: 10000 }, time: 60, power: 1500 }, 
+        T1: { name: 'Scout T1', cost: { coin: 50 }, time: 3, power: 15 }, 
+        T2: { name: 'Scout T2', cost: { coin: 400 }, time: 6, power: 75 }, 
+        T3: { name: 'Scout T3', cost: { coin: 2000 }, time: 20, power: 375 }, 
+        T4: { name: 'Scout T4', cost: { coin: 8000 }, time: 60, power: 1500 }, 
     },
     DefenderCat: {
         type: 'DefenderCat',
         icon: 'icon_res_gold',
-        T1: { name: 'Defender T1', cost: { coin: 150 }, time: 4, power: 20 }, 
-        T2: { name: 'Defender T2', cost: { coin: 1000, fish: 200 }, time: 10, power: 100 }, 
-        T3: { name: 'Defender T3', cost: { coin: 5000, fish: 1000 }, time: 30, power: 500 }, 
-        T4: { name: 'Defender T4', cost: { coin: 20000, fish: 5000 }, time: 120, power: 2000 }, 
+        T1: { name: 'Defender T1', cost: { coin: 75 }, time: 4, power: 20 }, 
+        T2: { name: 'Defender T2', cost: { coin: 800 }, time: 10, power: 100 }, 
+        T3: { name: 'Defender T3', cost: { coin: 4000 }, time: 30, power: 500 }, 
+        T4: { name: 'Defender T4', cost: { coin: 16000 }, time: 120, power: 2000 }, 
     },
     AttackerCat: {
         type: 'AttackerCat',
         icon: 'icon_res_gem',
-        T1: { name: 'Attacker T1', cost: { coin: 200 }, time: 5, power: 25 }, 
-        T2: { name: 'Attacker T2', cost: { gem: 50, fish: 500 }, time: 12, power: 125 }, 
-        T3: { name: 'Attacker T3', cost: { gem: 250, fish: 2500 }, time: 40, power: 600 }, 
-        T4: { name: 'Attacker T4', cost: { gem: 1000, fish: 10000 }, time: 180, power: 2500 }, 
+        T1: { name: 'Attacker T1', cost: { coin: 100 }, time: 5, power: 25 }, 
+        T2: { name: 'Attacker T2', cost: { coin: 1000 }, time: 12, power: 125 }, 
+        T3: { name: 'Attacker T3', cost: { coin: 5000 }, time: 40, power: 600 }, 
+        T4: { name: 'Attacker T4', cost: { coin: 20000 }, time: 180, power: 2500 }, 
     },
     EngineerCat: { 
         type: 'EngineerCat',
         icon: 'icon_build', 
-        T1: { name: 'Engineer T1', cost: { coin: 50, fish: 50 }, time: 2, power: 10 }, 
-        T2: { name: 'Engineer T2', cost: { fish: 2000 }, time: 8, power: 50 }, 
-        T3: { name: 'Engineer T3', cost: { coin: 10000, gem: 50 }, time: 25, power: 300 }, 
-        T4: { name: 'Engineer T4', cost: { coin: 50000, gem: 250 }, time: 90, power: 1200 }, 
+        T1: { name: 'Engineer T1', cost: { coin: 30 }, time: 2, power: 10 }, 
+        T2: { name: 'Engineer T2', cost: { coin: 600 }, time: 8, power: 50 }, 
+        T3: { name: 'Engineer T3', cost: { coin: 3000 }, time: 25, power: 300 }, 
+        T4: { name: 'Engineer T4', cost: { coin: 12000 }, time: 90, power: 1200 }, 
     },
 };
 
@@ -55,7 +68,22 @@ const BUILDING_NAMES = {
     BANK: "Bank",
     ACADEMY: "Academy",
     MARKET: "Market",
-    TANK: "Crypto Lab"
+    TANK: "Crypto Lab",
+    DEFENSE_TOWER: "Defense Tower"
+};
+
+// --- ЛИМИТЫ ЮНИТОВ В АКАДЕМИИ ПО УРОВНЯМ ---
+const ACADEMY_UNIT_LIMITS = {
+    1: 100,
+    2: 250,
+    3: 500,
+    4: 1000,
+    5: 2000,
+    6: 4000,
+    7: 8000,
+    8: 15000,
+    9: 30000,
+    10: 60000
 };
 
 // --- СОСТОЯНИЕ ИГРЫ ---
@@ -77,6 +105,10 @@ let GAME_STATE = {
     totalPower: 0,
     incomePerSecond: 0,
     lastIncomeTime: Date.now(),
+    
+    // Новое поле: юниты на обороне
+    defenseUnits: { ScoutCat: 0, DefenderCat: 0, AttackerCat: 0, EngineerCat: 0 },
+    maxDefenseUnits: 0, // Будет рассчитываться от уровня башни
     
     quests: {
         telegram_sub: { completed: false, claimed: false }
@@ -115,13 +147,13 @@ let GAME_STATE = {
         ACADEMY: { 
             level: 1,
             isBuilt: false,
-            buildCost: { coin: 100 },
+            buildCost: { coin: 200 }, // Изменено с 100 на 200
             buildDuration: 3000,
             isConstructing: false,
             constructionStartTime: 0,
             description: "Казарма, здесь обучаются боевые коты.",
             upgradeStartTime: 0, upgradeDuration: 3000, isUpgrading: false,
-            upgradeCost: { coin: 500 }
+            upgradeCost: { coin: 1000 } // Изменено с 500 на 1000
         },
         MARKET: { 
             level: 1, 
@@ -145,6 +177,19 @@ let GAME_STATE = {
             isUpgrading: false,
             upgradeStartTime: 0, upgradeDuration: 8000,
             upgradeCost: { coin: 1500 }
+        },
+        DEFENSE_TOWER: { 
+            level: 0, // Начинаем с 0
+            isBuilt: false,
+            buildCost: { coin: 500, fish: 50 }, 
+            buildDuration: 10000, // 10 секунд
+            isConstructing: false,
+            constructionStartTime: 0,
+            description: "Оборонительная Вышка. Увеличивает лимит защитных юнитов.", 
+            isUpgrading: false,
+            upgradeStartTime: 0, 
+            upgradeDuration: 15000, // 15 секунд на апгрейд
+            upgradeCost: { coin: 1000, fish: 100 }
         }
     }
 };
@@ -158,6 +203,7 @@ const ASSETS = {
     building_lab: { alias: 'building_lab', src: 'images/building_lab.png' }, 
     building_market: { alias: 'building_market', src: 'images/building_market.png' }, 
     building_tank: { alias: 'building_tank', src: 'images/building_tank.png' }, 
+    building_defense: { alias: 'building_defense', src: 'images/building_tank.png' },
 
     icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, 
     settings_icon: { alias: 'settings_icon', src: 'images/settings_icon.png' }, 
@@ -177,36 +223,79 @@ const ASSETS = {
 };
 
 function updateGameCalculations() {
+    // ВАЖНО: Делаем общую проверку на наличие основных структур
+    if (!GAME_STATE || !GAME_STATE.buildings || !GAME_STATE.storageCapacity) {
+        return; 
+    }
+    
     const BASE = GAME_STATE.storageCapacity.base;
-    if(GAME_STATE.buildings.BANK.isBuilt) {
-        const bankLvl = GAME_STATE.buildings.BANK.level;
+    
+    // 1. Расчет Хранилища (BANK) - ТОЛЬКО для монет
+    const bank = GAME_STATE.buildings.BANK;
+    
+    if(bank && bank.isBuilt) { 
+        const bankLvl = bank.level;
         GAME_STATE.storageCapacity.coin = BASE + (bankLvl * 1000); 
     } else {
         GAME_STATE.storageCapacity.coin = BASE;
     }
     
+    // 2. Расчет Лимита Защиты (DEFENSE_TOWER) - ИСПРАВЛЕННАЯ ЛОГИКА
+    let totalDefenseLimit = 0;
+    const defenseTower = GAME_STATE.buildings.DEFENSE_TOWER;
+    
+    if(defenseTower && defenseTower.isBuilt && defenseTower.level > 0) { 
+        // ПРОСТАЯ ЛОГИКА: каждый уровень дает +50 слотов защиты
+        totalDefenseLimit = defenseTower.level * 50;
+    }
+    GAME_STATE.maxDefenseUnits = totalDefenseLimit; 
+    
+    // 3. Расчет Дохода (MARKET и TRADERS)
     let totalIncomePerHour = 0;
-    if(GAME_STATE.buildings.MARKET.isBuilt) {
-        const marketLvl = GAME_STATE.buildings.MARKET.level;
+    const market = GAME_STATE.buildings.MARKET;
+    
+    if(market && market.isBuilt) { 
+        const marketLvl = market.level;
         totalIncomePerHour += marketLvl * 50; 
     }
     
     for(let tier in TRADER_DATA) {
-        totalIncomePerHour += GAME_STATE.traders[tier] * TRADER_DATA[tier].incomePerHour;
+        totalIncomePerHour += (GAME_STATE.traders[tier] || 0) * TRADER_DATA[tier].incomePerHour;
     }
     GAME_STATE.incomePerSecond = totalIncomePerHour / 3600; 
+    
+    // 4. Обновление UI (с защитой от ошибок)
+    if(SceneManager && SceneManager.currentScene && SceneManager.currentScene.updateTopUI) {
+        SceneManager.currentScene.updateTopUI();
+    }
 }
+
 // =========================================================================
 // ================== СОХРАНЕНИЕ / ЗАГРУЗКА ИГРЫ ===========================
 // =========================================================================
 
-const SAVE_KEY = 'cryptocats_save_v1';
+const SAVE_KEY = 'cryptocats_save_v2'; // Изменил ключ для сброса старых багов
 
 function saveGame() {
     try {
         GAME_STATE.lastSaveTime = Date.now();
-        const serializedState = JSON.stringify(GAME_STATE);
-        localStorage.setItem(SAVE_KEY, serializedState);
+        
+        // Глубокое копирование без функций и visualRef
+        const stateToSave = JSON.parse(JSON.stringify(GAME_STATE));
+        
+        // Удаляем временные поля (visualRef и т.д.)
+        for(let key in stateToSave.buildings) {
+            if(stateToSave.buildings[key]) {
+                delete stateToSave.buildings[key].visualRef;
+            }
+        }
+        
+        // Добавляем версию сохранения
+        stateToSave.saveVersion = 2;
+        stateToSave.saveTimestamp = Date.now();
+        
+        localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
+        console.log("Игра сохранена успешно", new Date().toLocaleTimeString());
     } catch (e) {
         console.error("Ошибка сохранения игры:", e);
     }
@@ -222,71 +311,148 @@ function loadGame() {
         
         const loadedState = JSON.parse(serializedState);
         
+        // Проверка версии сохранения
+        if (!loadedState.saveVersion || loadedState.saveVersion < 2) {
+            console.log("Старая версия сохранения, создаем новую игру");
+            localStorage.removeItem(SAVE_KEY);
+            return;
+        }
+        
+        console.log("Загружаем сохраненную игру...");
+        
+        // --- БЕЗОПАСНОЕ ВОССТАНОВЛЕНИЕ СТЕЙТА ---
+        // Восстанавливаем только нужные поля, а не весь объект
+        if (loadedState.resources) {
+            Object.assign(GAME_STATE.resources, loadedState.resources);
+        }
+        
+        if (loadedState.storageCapacity) {
+            Object.assign(GAME_STATE.storageCapacity, loadedState.storageCapacity);
+        }
+        
+        if (loadedState.units) {
+            Object.assign(GAME_STATE.units, loadedState.units);
+        }
+        
+        if (loadedState.traders) {
+            Object.assign(GAME_STATE.traders, loadedState.traders);
+        }
+        
+        // Восстанавливаем очереди юнитов
+        if (loadedState.unitQueues) {
+            for(let key in loadedState.unitQueues) {
+                if(GAME_STATE.unitQueues[key]) {
+                    // Фильтруем старые записи в очереди
+                    const now = Date.now();
+                    GAME_STATE.unitQueues[key] = loadedState.unitQueues[key].filter(item => {
+                        // Если юнит уже должен был быть готов, добавляем его сразу
+                        if(item.finish <= now) {
+                            GAME_STATE.units[item.type] = (GAME_STATE.units[item.type] || 0) + 1;
+                            return false;
+                        }
+                        return true;
+                    });
+                }
+            }
+        }
+        
+        if (loadedState.buildings) {
+            for(let key in loadedState.buildings) {
+                if(GAME_STATE.buildings[key]) {
+                    // Сохраняем основные поля, но не перезаписываем объекты PIXI
+                    const target = GAME_STATE.buildings[key];
+                    const source = loadedState.buildings[key];
+                    
+                    target.level = source.level || target.level;
+                    target.isBuilt = source.isBuilt !== undefined ? source.isBuilt : target.isBuilt;
+                    target.isConstructing = source.isConstructing !== undefined ? source.isConstructing : target.isConstructing;
+                    target.constructionStartTime = source.constructionStartTime || target.constructionStartTime;
+                    target.isUpgrading = source.isUpgrading !== undefined ? source.isUpgrading : target.isUpgrading;
+                    target.upgradeStartTime = source.upgradeStartTime || target.upgradeStartTime;
+                    
+                    // Исправление бага: если здание строилось, но время прошло - завершаем строительство
+                    const now = Date.now();
+                    if(target.isConstructing && target.constructionStartTime + target.buildDuration <= now) {
+                        target.isBuilt = true;
+                        target.isConstructing = false;
+                        if(key === 'DEFENSE_TOWER' && target.level === 0) {
+                            target.level = 1;
+                        }
+                    }
+                    
+                    // Исправление бага: если апгрейд прошел - завершаем его
+                    if(target.isUpgrading && target.upgradeStartTime + target.upgradeDuration <= now) {
+                        target.level = (target.level || 1) + 1;
+                        target.isUpgrading = false;
+                    }
+                }
+            }
+        }
+        
+        // Восстанавливаем дополнительные поля если они есть
+        if (loadedState.defenseUnits) {
+            GAME_STATE.defenseUnits = loadedState.defenseUnits;
+        }
+        
+        if (loadedState.maxDefenseUnits !== undefined) {
+            GAME_STATE.maxDefenseUnits = loadedState.maxDefenseUnits;
+        }
+        
+        if (loadedState.totalPower !== undefined) {
+            GAME_STATE.totalPower = loadedState.totalPower;
+        }
+        
+        if (loadedState.incomePerSecond !== undefined) {
+            GAME_STATE.incomePerSecond = loadedState.incomePerSecond;
+        }
+        
+        if (loadedState.lastIncomeTime !== undefined) {
+            GAME_STATE.lastIncomeTime = loadedState.lastIncomeTime;
+        }
+        
+        if (loadedState.quests) {
+            Object.assign(GAME_STATE.quests, loadedState.quests);
+        }
+        
+        if (loadedState.codes) {
+            Object.assign(GAME_STATE.codes, loadedState.codes);
+        }
+        
+        if (loadedState.referrals) {
+            Object.assign(GAME_STATE.referrals, loadedState.referrals);
+        }
+        
         // --- ОБРАБОТКА ОФФЛАЙН-ПРОГРЕССА ---
         const now = Date.now();
-        // Используем now как запасное время, если lastSaveTime отсутствует (для очень старых сохранений)
-        const timeSinceLastSave = now - (loadedState.lastSaveTime || now); 
+        const lastSave = loadedState.lastSaveTime || now;
+        const timeSinceLastSave = Math.max(0, now - lastSave); 
         const secondsOffline = Math.floor(timeSinceLastSave / 1000);
         
         if (secondsOffline > 1) { 
-            let incomeGained = (loadedState.incomePerSecond || 1) * secondsOffline;
+            let incomeGained = (GAME_STATE.incomePerSecond || 0) * secondsOffline;
             
-            const currentCoin = loadedState.resources.coin || 0;
-            const maxCoin = loadedState.storageCapacity.coin || Infinity;
+            const currentCoin = GAME_STATE.resources.coin || 0;
+            const maxCoin = GAME_STATE.storageCapacity.coin || Infinity;
             
             // Расчет монеты
             if (currentCoin < maxCoin) {
                  const coinGain = Math.min(incomeGained, maxCoin - currentCoin);
-                 loadedState.resources.coin = currentCoin + coinGain;
-                 if (coinGain > 0) console.log(`Оффлайн-прогресс: +${coinGain.toFixed(0)} монет.`);
-            }
-            
-            // Расчет рыбы 
-            let fishGained = (loadedState.fishIncomePerSecond || 0) * secondsOffline;
-            loadedState.resources.fish = (loadedState.resources.fish || 0) + fishGained;
-            if (fishGained > 0) console.log(`Оффлайн-прогресс: +${fishGained.toFixed(0)} рыбы.`);
-        }
-        
-        // Восстанавливаем состояние игры
-        Object.assign(GAME_STATE, loadedState);
-        
-        // Очистка и перерасчет таймеров
-        
-        // 1. Здания: Завершаем все, что должно было закончиться оффлайн
-        for (let k in GAME_STATE.buildings) {
-            const b = GAME_STATE.buildings[k];
-            
-            // Постройка
-            if (b.isConstructing && b.constructionStartTime + b.buildDuration < now) {
-                b.isBuilt = true;
-                b.isConstructing = false;
-            }
-            
-            // Апгрейд
-            if (b.isUpgrading && b.upgradeStartTime + b.upgradeDuration < now) {
-                b.level++;
-                b.isUpgrading = false;
+                 GAME_STATE.resources.coin = currentCoin + coinGain;
+                 if (coinGain > 0) console.log(`Оффлайн-прогресс: +${coinGain.toFixed(0)} монет за ${secondsOffline} секунд.`);
             }
         }
         
-        // 2. Юниты: Завершаем все, что должно было закончиться оффлайн
-        for(let k in GAME_STATE.unitQueues) {
-            const q = GAME_STATE.unitQueues[k];
-            // Чистим те, которые должны были быть готовы
-            while (q.length > 0 && q[0].finish <= now) {
-                const done = q.shift();
-                GAME_STATE.units[done.type]++;
-            }
-        }
+        // Обновляем расчеты после загрузки
+        updateGameCalculations();
         
-        console.log("Игра загружена успешно.");
+        console.log("Игра загружена успешно. Время сохранения:", new Date(loadedState.saveTimestamp).toLocaleString());
 
     } catch (e) {
         console.error("Ошибка загрузки игры. Начинаем новую игру.", e);
-        // Если ошибка, удаляем испорченное сохранение
         localStorage.removeItem(SAVE_KEY); 
     }
 }
+
 // =========================================================================
 // ================== БАЗОВЫЙ КЛАСС ========================================
 // =========================================================================
@@ -444,6 +610,97 @@ class BaseScene extends PIXI.Container {
         c.on('pointerout', ()=>c.scale.set(1));
         return c;
     }
+    
+    createSlider(min, max, initial, onChange) {
+        const container = new PIXI.Container();
+        const width = 200;
+        const height = 30;
+        
+        // Фон слайдера
+        const bg = new PIXI.Graphics()
+            .roundRect(0, 0, width, height, height/2)
+            .fill({color: 0x333333});
+        container.addChild(bg);
+        
+        // Заполненная часть
+        const fill = new PIXI.Graphics()
+            .roundRect(0, 0, width * ((initial - min) / (max - min)), height, height/2)
+            .fill({color: 0x4CAF50});
+        container.addChild(fill);
+        
+        // Ползунок
+        const slider = new PIXI.Graphics()
+            .circle(0, 0, 20)
+            .fill({color: 0xFFFFFF});
+        slider.x = width * ((initial - min) / (max - min));
+        slider.y = height / 2;
+        container.addChild(slider);
+        
+        // Текст значения
+        const valueText = new PIXI.Text(initial.toString(), {
+            fontFamily: 'Arial',
+            fontSize: 16,
+            fill: 0xFFFFFF,
+            fontWeight: 'bold'
+        });
+        valueText.anchor.set(0.5);
+        valueText.x = width / 2;
+        valueText.y = -20;
+        container.addChild(valueText);
+        
+        // Интерактивность
+        const hitArea = new PIXI.Graphics()
+            .rect(-20, -20, width + 40, height + 40)
+            .fill({color: 0xFFFFFF, alpha: 0.01});
+        container.addChild(hitArea);
+        hitArea.eventMode = 'static';
+        hitArea.cursor = 'pointer';
+        
+        let isDragging = false;
+        
+        const updateSlider = (x) => {
+            let percent = Math.max(0, Math.min(1, x / width));
+            const value = Math.round(min + percent * (max - min));
+            
+            slider.x = percent * width;
+            fill.width = percent * width;
+            valueText.text = value.toString();
+            
+            if (onChange) {
+                onChange(value);
+            }
+            
+            return value;
+        };
+        
+        hitArea.on('pointerdown', (e) => {
+            isDragging = true;
+            const local = container.toLocal(e.global);
+            updateSlider(local.x);
+        });
+        
+        hitArea.on('pointermove', (e) => {
+            if (isDragging) {
+                const local = container.toLocal(e.global);
+                updateSlider(local.x);
+            }
+        });
+        
+        hitArea.on('pointerup', () => {
+            isDragging = false;
+        });
+        
+        hitArea.on('pointerupoutside', () => {
+            isDragging = false;
+        });
+        
+        container.sliderValue = initial;
+        container.updateValue = (val) => {
+            updateSlider((val - min) / (max - min) * width);
+        };
+        
+        return container;
+    }
 
     // --- МЕНЮ НАСТРОЕК ---
     openSettingsMenu() {
@@ -478,6 +735,14 @@ class BaseScene extends PIXI.Container {
         hint.anchor.set(0.5); hint.y = 25;
         m.addChild(hint);
 
+        // Кнопка сохранения
+        const saveBtn = this.createSimpleButton("СОХРАНИТЬ", ()=>{
+            saveGame();
+            alert("Игра сохранена!");
+        }, 0x28A745, 200, 50);
+        saveBtn.y = 70;
+        m.addChild(saveBtn);
+
         const close = this.createSimpleButton("Закрыть", ()=>m.destroy({children:true}), 0xDC3545, 120, 40);
         close.y = H/2 - 40;
         m.addChild(close);
@@ -496,7 +761,7 @@ class BaseScene extends PIXI.Container {
                 }
                 updateGameCalculations();
                 this.addTopUI();
-                alert(msg); // Простой алерт для результата
+                alert(msg);
             } else {
                 alert("Этот код уже использован!");
             }
@@ -567,37 +832,33 @@ class MainMenuScene extends BaseScene {
             const cont = new PIXI.Container();
             
             // --- ФИКС БАГА С НАЖАТИЕМ ---
-            // Используем Y координату как Z-index для правильного перекрытия
-            // Чем ниже по экрану (больше Y), тем выше zIndex (ближе к зрителю)
             cont.x = x; 
             cont.y = y;
-             cont.zIndex = y + (type === 'CENTER' ? -5000 : 0);
-
+            cont.zIndex = y + (type === 'CENTER' ? -5000 : 0);
 
             if (bData.isBuilt) {
                 const sp = PIXI.Sprite.from(alias);
                 sp.anchor.set(0.5); sp.scale.set(scale); 
                 sp.eventMode='static'; sp.cursor='pointer';
                 sp.on('pointertap', (e)=>{ 
-                    e.stopPropagation(); // Остановка события, чтобы не кликнулось что-то под зданием
+                    e.stopPropagation();
                     this.openMenu(cont, type); 
                 });
                 cont.addChild(sp);
             } else {
                 // --- 3D "ПЛИТКА" (ФУНДАМЕНТ) ---
                 const w = 150 * scale * 2.5; 
-                const h = 150 * scale * 2.5; // Базовая высота для логики, но рисовать будем изометрию
+                const h = 150 * scale * 2.5;
                 
                 const g = new PIXI.Graphics();
                 
                 // Рисуем изометрический ромб
-                // Верхняя грань
                 g.poly([
-                    0, -h/3,        // Верх
-                    w/2, 0,         // Право
-                    0, h/3,         // Низ
-                    -w/2, 0         // Лево
-                ]).fill({color:0x111111}); // Темный верх
+                    0, -h/3,
+                    w/2, 0,
+                    0, h/3,
+                    -w/2, 0
+                ]).fill({color:0x111111});
                 
                 // Боковая грань (толщина) - для 3D эффекта
                 g.poly([
@@ -619,10 +880,10 @@ class MainMenuScene extends BaseScene {
 
                 cont.addChild(g);
                 
-                // Хитбокс для клика (прозрачный, по форме ромба, чтобы кликать точно)
+                // Хитбокс для клика
                 g.eventMode='static'; g.cursor='pointer';
                 g.on('pointertap', (e) => {
-                    e.stopPropagation(); // ВАЖНО: Остановить всплытие, чтобы не кликнуть TownHall под низом
+                    e.stopPropagation();
                     this.tryBuild(type);
                 });
 
@@ -655,20 +916,25 @@ class MainMenuScene extends BaseScene {
         addB('building_lab', APP_WIDTH/2 + 220, APP_HEIGHT/2 - 100, 'ACADEMY', SCALE_OTHER); 
         addB('building_market', APP_WIDTH/2 + 220, APP_HEIGHT/2 + 250, 'MARKET', SCALE_OTHER); 
         addB('building_tank', APP_WIDTH/2 - 190, APP_HEIGHT/2 + 250, 'TANK', SCALE_OTHER);
+        addB('building_defense', APP_WIDTH/2 - 10, APP_HEIGHT/2 - 200, 'DEFENSE_TOWER', SCALE_OTHER);
     }
 
     tryBuild(type) {
         const b = GAME_STATE.buildings[type];
         if(b.isConstructing) return;
         
-        if(GAME_STATE.resources.coin >= b.buildCost.coin) {
+        if(GAME_STATE.resources.coin >= b.buildCost.coin && 
+           (!b.buildCost.fish || GAME_STATE.resources.fish >= b.buildCost.fish)) {
             GAME_STATE.resources.coin -= b.buildCost.coin;
+            if(b.buildCost.fish) GAME_STATE.resources.fish -= b.buildCost.fish;
             b.isConstructing = true;
             b.constructionStartTime = Date.now();
             this.updateTotalPower();
             this.renderBuildings(); 
         } else {
-            this.showInfoModal("Стройка", `Нужно ${b.buildCost.coin} монет!`);
+            let msg = `Нужно: ${b.buildCost.coin} монет`;
+            if(b.buildCost.fish) msg += ` и ${b.buildCost.fish} рыбы`;
+            this.showInfoModal("Стройка", msg);
         }
     }
 
@@ -683,16 +949,21 @@ class MainMenuScene extends BaseScene {
         
         let yOffsetBase = 70;
 
-// --- ТАУН ХОЛЛ (CENTER): кнопки ровно под зданием ---
-if(type === 'CENTER') {
-    yOffsetBase = 120;   // опускаем меню под здание
-    m.x -= 65;           // выравниваем по центру
-}
-
-// --- БАНК (BANK): кнопки немного выше ---
-else if(type === 'BANK') {
-    yOffsetBase = 90;    // поднимаем меню выше
-}
+        // --- ТАУН ХОЛЛ (CENTER): кнопки ровно под зданием ---
+        if(type === 'CENTER') {
+            yOffsetBase = 120;
+            m.x -= 65;
+        }
+        
+        // --- БАНК (BANK): кнопки немного выше ---
+        else if(type === 'BANK') {
+            yOffsetBase = 90;
+        }
+        
+        // --- DEFENSE_TOWER: тоже выше ---
+        else if(type === 'DEFENSE_TOWER') {
+            yOffsetBase = 90;
+        }
 
         m.y = container.y + yOffsetBase; 
 
@@ -710,6 +981,7 @@ else if(type === 'BANK') {
                 this.updateTotalPower();
                 bData.isUpgrading=true; 
                 bData.upgradeStartTime=Date.now();
+                saveGame(); // Сохраняем после начала апгрейда
             } else {
                 this.showInfoModal("Ошибка", "Не хватает ресурсов!");
             }
@@ -741,6 +1013,10 @@ else if(type === 'BANK') {
         else if(type === 'TANK') {
             useTxt="Research"; useCol=0x9B59B6; useAct=()=>this.manager.changeScene(CryptoLabScene);
             infoText = "Лаборатория исследований новых технологий для котов и экономики.";
+        }
+        else if(type === 'DEFENSE_TOWER') {
+            useTxt="Оборона"; useCol=0xFF4444; useAct=()=>this.manager.changeScene(DefenseScene);
+            infoText = `${bData.description}\n\nТекущий уровень: ${bData.level}\nМакс. защитных юнитов: ${GAME_STATE.maxDefenseUnits}\n\nНажми "Оборона" для управления защитой.`;
         }
 
         const useBtn = this.createPentagon(useTxt, useCol, useAct);
@@ -875,7 +1151,7 @@ else if(type === 'BANK') {
             { icon: ASSETS.icon_map.alias, text: "Карта", action: ()=>this.showInfoModal("Карта", "Переход на карту (в разработке)") },
             { icon: ASSETS.icon_train.alias, text: "Атака", action: ()=>this.showInfoModal("Атака", "Сцена атаки (в разработке)") },
             { icon: ASSETS.icon_upgrade.alias, text: "Герои", action: ()=>this.manager.changeScene(HeroesScene) },
-            { icon: ASSETS.icon_friends.alias, text: "Друзья", action: ()=>this.manager.changeScene(FriendsScene) }, // НОВАЯ КНОПКА
+            { icon: ASSETS.icon_friends.alias, text: "Друзья", action: ()=>this.manager.changeScene(FriendsScene) },
             { icon: ASSETS.icon_power_cat.alias, text: "Задания", action: ()=>this.manager.changeScene(QuestsScene) }
         ];
 
@@ -905,7 +1181,6 @@ else if(type === 'BANK') {
                 icon = PIXI.Sprite.from(btn.icon);
                 icon.anchor.set(0.5); icon.scale.set(0.08); icon.y = -10; 
             } else {
-                // Фолбек, если иконка не найдена
                 icon = new PIXI.Text("?", {fontSize:24, fill:0xFFFFFF});
                 icon.anchor.set(0.5); icon.y=-10;
             }
@@ -918,6 +1193,214 @@ else if(type === 'BANK') {
             btnCont.addChild(icon, text);
             navContainer.addChild(btnCont);
         });
+    }
+}
+
+// --- СЦЕНА: ОБОРОНА (DEFENSE SCENE) ---
+class DefenseScene extends BaseScene {
+    constructor(manager) {
+        super(manager);
+        this.unitPanels = [];
+        this.selectedCounts = {};
+    }
+
+    init() {
+        super.init();
+        this.addBackgroundCover('fon_academy');
+        this.addTopUI();
+
+        // Заголовок сцены
+        const title = new PIXI.Text("СИСТЕМА ОБОРОНЫ", {fontFamily:'Arial', fontSize:32, fill:0xFF4444, fontWeight:'bold', stroke: 0x000000, strokeThickness: 4});
+        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
+        this.addChild(title);
+
+        // Информация о защите
+        const defenseTower = GAME_STATE.buildings.DEFENSE_TOWER;
+        const defenseInfo = new PIXI.Text(
+            `Уровень башни: ${defenseTower.level}\nЛимит защиты: ${GAME_STATE.defenseUnits.ScoutCat + GAME_STATE.defenseUnits.DefenderCat + GAME_STATE.defenseUnits.AttackerCat + GAME_STATE.defenseUnits.EngineerCat}/${GAME_STATE.maxDefenseUnits}`,
+            {fontFamily:'Arial', fontSize:20, fill: 0x00FF00, fontWeight:'bold', align: 'center'}
+        );
+        defenseInfo.anchor.set(0.5); defenseInfo.x = APP_WIDTH/2; defenseInfo.y = 160;
+        this.addChild(defenseInfo);
+        this.defenseInfo = defenseInfo;
+
+        // Область прокрутки (Scroll View)
+        this.viewY = 190;
+        this.viewH = APP_HEIGHT - 280;
+        this.scrollContent = new PIXI.Container();
+        this.scrollContent.y = 0;
+
+        // Маска для обрезания лишнего
+        const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
+        this.addChild(mask);
+        this.scrollContent.mask = mask;
+        this.addChild(this.scrollContent);
+
+        // Рендерим панели юнитов
+        this.renderDefenseUnits();
+
+        // Кнопка НАЗАД
+        const back = this.createSimpleButton("Назад", ()=>{ this.manager.changeScene(MainMenuScene); }, 0xFFD700);
+        back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
+        this.addChild(back);
+
+        // Логика скролла
+        this.isDragging = false; this.lastY = 0;
+        const inputBg = new PIXI.Graphics().rect(0,this.viewY,APP_WIDTH,this.viewH).fill({color:0x000000, alpha:0.01});
+        inputBg.eventMode='static';
+        this.addChildAt(inputBg, 0);
+
+        inputBg.on('pointerdown', (e)=>{ this.isDragging = true; this.lastY = e.global.y; });
+        inputBg.on('globalpointermove', (e)=>{ 
+            if(this.isDragging) {
+                const dy = e.global.y - this.lastY;
+                this.scrollContent.y += dy;
+                this.lastY = e.global.y;
+                this.clampScroll();
+            }
+        });
+        inputBg.on('pointerup', ()=>this.isDragging=false);
+        inputBg.on('pointerupoutside', ()=>this.isDragging=false);
+    }
+
+    clampScroll() {
+        if(this.scrollContent.y > 80) this.scrollContent.y = 80;
+        const contentHeight = (this._defenseContentHeight || 1000);
+        const minY = Math.min(-contentHeight + this.viewH + 80, 0);
+        if(this.scrollContent.y < minY) this.scrollContent.y = minY;
+    }
+
+    renderDefenseUnits() {
+        this.scrollContent.removeChildren();
+        let y = 10;
+        
+        // Заголовок
+        const title = new PIXI.Text("РАЗМЕСТИТЕ ЮНИТЫ НА ОБОРОНУ", {fontFamily:'Arial', fontSize:24, fill:0xFFAAAA, fontWeight:'bold'});
+        title.x = 20; title.y = y;
+        this.scrollContent.addChild(title);
+        y += 40;
+
+        // Панели для каждого типа юнита
+        for(let key in UNIT_DATA) {
+            const data = UNIT_DATA[key];
+            const panel = this.createDefenseUnitPanel(key, data, y);
+            this.scrollContent.addChild(panel);
+            y += 180;
+        }
+
+        this._defenseContentHeight = y + 50;
+    }
+
+    createDefenseUnitPanel(typeKey, data, y) {
+        const tier = data.T1;
+        const p = new PIXI.Container();
+        p.x = 10; p.y = y;
+
+        // Фон карточки
+        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, 170, 10)
+            .fill({color: 0x222222, alpha:0.95})
+            .stroke({width:2, color: 0xFF4444});
+        p.addChild(bg);
+
+        // Иконка
+        const iconAlias = data.icon || 'icon_power_cat';
+        if(PIXI.Assets.cache.has(iconAlias)){
+            const ic = PIXI.Sprite.from(iconAlias);
+            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=50;
+            p.addChild(ic);
+        }
+
+        // Название
+        const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF, fontWeight:'bold'});
+        nameTxt.x=100; nameTxt.y=10; p.addChild(nameTxt);
+
+        // Доступно всего / На обороне
+        const totalUnits = GAME_STATE.units[typeKey] || 0;
+        const onDefense = GAME_STATE.defenseUnits[typeKey] || 0;
+        const available = totalUnits - onDefense;
+        
+        const statsTxt = new PIXI.Text(`Всего: ${totalUnits} | На обороне: ${onDefense} | Свободно: ${available}`, 
+            {fontFamily:'Arial', fontSize:14, fill:0xAAAAAA});
+        statsTxt.x=100; statsTxt.y=40; p.addChild(statsTxt);
+
+        // Сила
+        const powerInfo = new PIXI.Text(`Мощь: +${tier.power || 0}`, {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
+        powerInfo.x=100; powerInfo.y=65; p.addChild(powerInfo);
+
+        // Слайдер для выбора количества
+        const maxToPlace = Math.min(available, GAME_STATE.maxDefenseUnits - 
+            (GAME_STATE.defenseUnits.ScoutCat + GAME_STATE.defenseUnits.DefenderCat + 
+             GAME_STATE.defenseUnits.AttackerCat + GAME_STATE.defenseUnits.EngineerCat));
+        
+        const slider = this.createSlider(0, maxToPlace, 0, (value) => {
+            p.selectedCount = value;
+            countText.text = `Выбрано: ${value}`;
+        });
+        slider.x = 100;
+        slider.y = 90;
+        p.addChild(slider);
+        p.slider = slider;
+
+        // Текст выбранного количества
+        const countText = new PIXI.Text(`Выбрано: 0`, {fontFamily:'Arial', fontSize:14, fill:0xFFD700});
+        countText.x = 320; countText.y = 90;
+        p.addChild(countText);
+        p.countText = countText;
+
+        // Кнопка РАЗМЕСТИТЬ
+        const placeBtn = this.createSimpleButton("РАЗМЕСТИТЬ", ()=>{
+            const count = p.selectedCount || 0;
+            if(count > 0 && count <= available) {
+                // Проверяем общий лимит защиты
+                const currentTotalDefense = GAME_STATE.defenseUnits.ScoutCat + GAME_STATE.defenseUnits.DefenderCat + 
+                                          GAME_STATE.defenseUnits.AttackerCat + GAME_STATE.defenseUnits.EngineerCat;
+                
+                if(currentTotalDefense + count <= GAME_STATE.maxDefenseUnits) {
+                    GAME_STATE.defenseUnits[typeKey] = (GAME_STATE.defenseUnits[typeKey] || 0) + count;
+                    // Юниты уходят из общей армии на оборону
+                    GAME_STATE.units[typeKey] -= count;
+                    
+                    // Обновляем UI
+                    this.updateDefenseInfo();
+                    this.renderDefenseUnits();
+                    saveGame(); // Сохраняем прогресс
+                } else {
+                    this.showInfoModal("Ошибка", `Превышен лимит защиты! Максимум: ${GAME_STATE.maxDefenseUnits}`);
+                }
+            }
+        }, 0xFF4444, 120, 40, 10);
+        placeBtn.x = APP_WIDTH - 80; placeBtn.y = 130;
+        p.addChild(placeBtn);
+
+        // Кнопка СНЯТЬ С ОБОРОНЫ
+        const removeBtn = this.createSimpleButton("СНЯТЬ", ()=>{
+            if(onDefense > 0) {
+                const removeCount = Math.min(onDefense, 10); // Можно снять до 10 за раз
+                GAME_STATE.defenseUnits[typeKey] -= removeCount;
+                GAME_STATE.units[typeKey] += removeCount;
+                
+                // Обновляем UI
+                this.updateDefenseInfo();
+                this.renderDefenseUnits();
+                saveGame(); // Сохраняем прогресс
+            }
+        }, 0x4444FF, 80, 30, 5);
+        removeBtn.x = APP_WIDTH - 180; removeBtn.y = 130;
+        p.addChild(removeBtn);
+
+        p.selectedCount = 0;
+        return p;
+    }
+
+    updateDefenseInfo() {
+        const defenseTower = GAME_STATE.buildings.DEFENSE_TOWER;
+        const totalDefense = GAME_STATE.defenseUnits.ScoutCat + GAME_STATE.defenseUnits.DefenderCat + 
+                           GAME_STATE.defenseUnits.AttackerCat + GAME_STATE.defenseUnits.EngineerCat;
+        
+        this.defenseInfo.text = `Уровень башни: ${defenseTower.level}\nЛимит защиты: ${totalDefense}/${GAME_STATE.maxDefenseUnits}`;
+        
+        // Обновляем общую силу
+        this.updateTotalPower();
     }
 }
 
@@ -942,7 +1425,7 @@ class FriendsScene extends BaseScene {
         const bg = new PIXI.Graphics().roundRect(-300, -60, 600, 120, 20).fill({color:0x222222, alpha:0.9}).stroke({width:2, color:0x00FF00});
         bonusPanel.addChild(bg);
 
-        const t1 = new PIXI.Text("Пригласи друга и получи:", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF});
+        const t1 = new PIXI.Text("Пригласи друг и получи:", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF});
         t1.anchor.set(0.5); t1.y = -20;
         bonusPanel.addChild(t1);
 
@@ -952,7 +1435,6 @@ class FriendsScene extends BaseScene {
 
         // Кнопка приглашения
         const inviteBtn = this.createSimpleButton("ПРИГЛАСИТЬ ДРУГА", ()=>{
-            // Копирование ссылки (симуляция)
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(GAME_STATE.referrals.link).then(() => {
                     alert("Реферальная ссылка скопирована: " + GAME_STATE.referrals.link);
@@ -1051,17 +1533,14 @@ class QuestsScene extends BaseScene {
 
             const btn = this.createSimpleButton(btnText, ()=>{
                 if(!qState.completed) {
-                    // Этап 1: Переход по ссылке
                     window.open(data.link, '_blank');
                     qState.completed = true;
-                    // Перерисовываем сцену (просто перегружаем текущую)
                     this.manager.changeScene(QuestsScene);
                 } else {
-                    // Этап 2: Забрать награду
                     qState.claimed = true;
                     GAME_STATE.resources.coin += data.reward;
                     updateGameCalculations();
-                    this.manager.changeScene(QuestsScene); // Обновить UI
+                    this.manager.changeScene(QuestsScene);
                 }
             }, btnCol, 140, 50, 10);
             
@@ -1086,7 +1565,7 @@ class HeroesScene extends BaseScene {
 
         this.heroes = [
             { name: "Scout Commander", icon: "icon_power_cat", desc: "Мастер разведки." },
-            { name: "Shadow Stalker", icon: "🐈‍⬛", desc: "Скрытный убийца (Coming Soon)." } // Заглушка
+            { name: "Shadow Stalker", icon: "🐈‍⬛", desc: "Скрытный убийца (Coming Soon)." }
         ];
 
         this.renderHeroDisplay();
@@ -1132,14 +1611,12 @@ class HeroesScene extends BaseScene {
         heroVisual.addChild(halo);
 
         if(hero.icon === "icon_power_cat") {
-            // Используем спрайт
              if(PIXI.Assets.cache.has(hero.icon)) {
                 const sp = PIXI.Sprite.from(hero.icon);
                 sp.anchor.set(0.5); sp.scale.set(0.2); 
                 heroVisual.addChild(sp);
              }
         } else {
-            // Эмодзи (черный кот)
             const txtIcon = new PIXI.Text(hero.icon, {fontSize:150});
             txtIcon.anchor.set(0.5);
             heroVisual.addChild(txtIcon);
@@ -1231,9 +1708,8 @@ class CryptoLabScene extends BaseScene {
 
     clampScroll() {
         if(this.scrollContent.y > 100) this.scrollContent.y = 100;
-        // высота содержимого: вычислим примерную нижнюю границу (если узлов мало, ставим -800)
         const contentHeight = (this._computedMaxY || 1200);
-        const minY = Math.min(-contentHeight + this.viewH + 100, -150); // не опускаем слишком далеко
+        const minY = Math.min(-contentHeight + this.viewH + 100, -150);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
@@ -1245,9 +1721,8 @@ class CryptoLabScene extends BaseScene {
         const rootX = APP_WIDTH/2;
         let startY = 150;
 
-        const nodes = []; // будем собирать позиции, чтобы потом соединять
+        const nodes = [];
 
-        // Helper: добавляем узел (возвращает объект с x,y,display)
         const addNode = (x,y,label,iconChar, locked) => {
             const c = new PIXI.Container();
             c.x = x; c.y = y;
@@ -1288,7 +1763,7 @@ class CryptoLabScene extends BaseScene {
                 const dev = new PIXI.Text("В РАЗРАБОТКЕ", {fontFamily:'Arial', fontSize:10, fill:0xFF5555, fontWeight:'bold'});
                 dev.anchor.set(0.5); dev.y = 70;
                 c.addChild(dev);
-                c.interactive = false; // нет клика
+                c.interactive = false;
             } else {
                 c.on('pointertap', ()=>this.showInfoModal(label, "Исследование пока недоступно."));
             }
@@ -1469,6 +1944,7 @@ class MarketScene extends BaseScene {
             GAME_STATE.traders[key]++;
             updateGameCalculations();
             this.addTopUI();
+            saveGame(); // Сохраняем прогресс
         } else {
             this.showInfoModal("Ошибка", "Не хватает ресурсов для найма!");
         }
@@ -1484,7 +1960,7 @@ class AcademyScene extends BaseScene {
 
     init() {
         super.init();
-        this.addBackgroundCover('fon_academy'); // Убедись, что fon_academy есть в ASSETS, иначе будет черный фон
+        this.addBackgroundCover('fon_academy');
         this.addTopUI();
 
         // Заголовок сцены
@@ -1492,9 +1968,22 @@ class AcademyScene extends BaseScene {
         title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
         this.addChild(title);
 
-        // Область прокрутки (Scroll View)
-        this.viewY = 140;
-        this.viewH = APP_HEIGHT - 220;
+        // Получаем текущий лимит юнитов
+        const academyLevel = GAME_STATE.buildings.ACADEMY.level;
+        const unitLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+        const currentUnits = Object.values(GAME_STATE.units).reduce((a, b) => a + b, 0);
+        
+        // Информация о лимите
+        const limitInfo = new PIXI.Text(`Лимит юнитов: ${currentUnits}/${unitLimit} (Уровень Академии: ${academyLevel})`, 
+            {fontFamily:'Arial', fontSize:18, fill: currentUnits >= unitLimit ? 0xFF4444 : 0x00FF00, fontWeight:'bold'});
+        limitInfo.anchor.set(0.5); limitInfo.x = APP_WIDTH/2; limitInfo.y = 150;
+        this.addChild(limitInfo);
+        
+        this.limitInfoText = limitInfo;
+
+        // Область прокрутки (Scroll View) - ИСПРАВЛЕНО: смещаем вниз чтобы первый юнит был виден
+        this.viewY = 180;
+        this.viewH = APP_HEIGHT - 260;
         this.scrollContent = new PIXI.Container();
         this.scrollContent.y = 0;
 
@@ -1541,11 +2030,11 @@ class AcademyScene extends BaseScene {
         super.destroy(opt);
     }
 
-    // Ограничение прокрутки, чтобы не улетало далеко
+    // Ограничение прокрутки, чтобы не улетало далеко - ИСПРАВЛЕНО
     clampScroll() {
-        if(this.scrollContent.y > 80) this.scrollContent.y = 80;
+        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
         const contentHeight = (this._academyContentHeight || 1000);
-        const minY = Math.min(-contentHeight + this.viewH + 80, -50);
+        const minY = Math.min(-contentHeight + this.viewH + 80, 0); // Было -50, исправлено на 0
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
@@ -1590,14 +2079,14 @@ class AcademyScene extends BaseScene {
         this._academyContentHeight = y + 50;
     }
 
-    // Создание одной карточки юнита
+    // Создание одной карточки юнита - ДОБАВЛЕН СЛАЙДЕР
     _createUnitPanel(typeKey, data, y, locked=false) {
         const tier = data.T1; // Берем данные (имя, цена, сила)
         const p = new PIXI.Container();
         p.x = 10; p.y = y;
 
         // Фон карточки
-        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, locked ? 140 : 170, 10)
+        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, locked ? 140 : 200, 10)
             .fill({color: locked ? 0x151515 : 0x222222, alpha:0.95})
             .stroke({width:2, color: locked ? 0x333333 : 0x555555});
         p.addChild(bg);
@@ -1614,8 +2103,9 @@ class AcademyScene extends BaseScene {
         const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill: locked ? 0x777777 : 0xFFFFFF, fontWeight:'bold'});
         nameTxt.x=100; nameTxt.y=10; p.addChild(nameTxt);
 
-        // Цена
-        const costTxt = this.formatCost(tier.cost || {});
+        // Цена за ОДНОГО (только монеты)
+        const singleCost = tier.cost.coin || 0;
+        const costTxt = `${singleCost.toLocaleString()} Coin`;
         const cost = new PIXI.Text(`Цена: ${costTxt}`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0xFFD700});
         cost.x=100; cost.y=40; p.addChild(cost);
 
@@ -1626,38 +2116,58 @@ class AcademyScene extends BaseScene {
         if(!locked) {
             // -- Если открыто (T1) --
             
-            // Счетчик количества для найма
+            // Счетчик количества для найма (теперь через слайдер)
             let count = 1;
-            const cntLbl = new PIXI.Text("1", {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF, fontWeight:'bold'});
-            cntLbl.anchor.set(0.5); cntLbl.x = APP_WIDTH - 160; cntLbl.y = 50;
-            p.addChild(cntLbl);
-
-            // Кнопка МИНУС
-            const btnMinus = this.createSimpleButton("-", ()=>{ 
-                if(count > 1) { count--; cntLbl.text = count; }
-            }, 0xDC3545, 40, 40, 5);
-            btnMinus.x = APP_WIDTH - 210; btnMinus.y = 50;
-            p.addChild(btnMinus);
-
-            // Кнопка ПЛЮС (ВОТ ЗДЕСЬ БЫЛ ВОПРОС)
-            const btnPlus = this.createSimpleButton("+", ()=>{ 
-                count++; cntLbl.text = count; 
-            }, 0x28A745, 40, 40, 5);
-            btnPlus.x = APP_WIDTH - 110; btnPlus.y = 50;
-            p.addChild(btnPlus);
+            
+            // Слайдер для выбора количества
+            const academyLevel = GAME_STATE.buildings.ACADEMY.level;
+            const unitLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+            const currentUnits = Object.values(GAME_STATE.units).reduce((a, b) => a + b, 0);
+            const maxCanHire = Math.min(100, unitLimit - currentUnits); // Максимум 100 за раз или до лимита
+            
+            const slider = this.createSlider(1, maxCanHire, 1, (value) => {
+                count = value;
+                p.selectedCount = value;
+                totalCostLabel.text = `Всего: ${singleCost * value} Coin`;
+            });
+            slider.x = 100;
+            slider.y = 90;
+            p.addChild(slider);
+            p.slider = slider;
+            p.selectedCount = 1;
+            
+            // Отображение общей стоимости
+            const totalCostLabel = new PIXI.Text(`Всего: ${singleCost} Coin`, 
+                {fontFamily:'Arial', fontSize:14, fill:0xFFD700});
+            totalCostLabel.x = 350; totalCostLabel.y = 90;
+            p.addChild(totalCostLabel);
+            p.totalCostLabel = totalCostLabel;
 
             // Кнопка НАЙМ
             const hireBtn = this.createSimpleButton("НАЙМ", ()=>{
+                const academyLevel = GAME_STATE.buildings.ACADEMY.level;
+                const unitLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+                const currentUnits = Object.values(GAME_STATE.units).reduce((a, b) => a + b, 0);
+                
+                if(currentUnits + count > unitLimit) {
+                    this.showInfoModal("Лимит", `Нельзя нанять ${count} юнитов! Лимит: ${unitLimit}, У вас: ${currentUnits}`);
+                    return;
+                }
+                
                 console.log("Пытаюсь нанять:", typeKey, "кол-во:", count);
-                this.startTrain(typeKey, count, tier.cost || {}, tier.time || 1, tier.power || 0);
-                count = 1; cntLbl.text = "1"; // сброс после нажатия
+                this.startTrain(typeKey, count, tier.cost || {coin: singleCost}, tier.time || 1, tier.power || 0);
+                // Сброс слайдера до 1
+                slider.updateValue(1);
+                count = 1;
+                p.selectedCount = 1;
+                totalCostLabel.text = `Всего: ${singleCost} Coin`;
             }, 0x00FF00, 120, 40, 10);
-            hireBtn.x = APP_WIDTH - 80; hireBtn.y = 110;
+            hireBtn.x = APP_WIDTH - 80; hireBtn.y = 160;
             p.addChild(hireBtn);
 
             // Прогресс бар
             const barContainer = new PIXI.Container();
-            barContainer.position.set(100, 145);
+            barContainer.position.set(100, 185);
             p.addChild(barContainer);
             const barBg = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x000000);
             barContainer.addChild(barBg);
@@ -1665,7 +2175,7 @@ class AcademyScene extends BaseScene {
             barFill.width = 0;
             barContainer.addChild(barFill);
             const qLbl = new PIXI.Text("", {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
-            qLbl.x = 100; qLbl.y = 125;
+            qLbl.x = 100; qLbl.y = 165;
             p.addChild(qLbl);
 
             this.unitPanels.push({ type: typeKey, bar: barFill, qLabel: qLbl });
@@ -1685,15 +2195,24 @@ class AcademyScene extends BaseScene {
 
     startTrain(type, count, costObj, time, power) {
         let ok = true;
-        // Проверяем ресурсы
-        for(let r in costObj) {
-            if(GAME_STATE.resources[r] < costObj[r] * count) ok = false;
+        const totalCost = costObj.coin * count;
+        
+        // Проверяем ресурсы (только монеты)
+        if (GAME_STATE.resources.coin < totalCost) {
+            ok = false;
         }
 
         if(ok) {
-            // Списываем ресурсы
-            for(let r in costObj) GAME_STATE.resources[r] -= costObj[r] * count;
+            // Списываем ресурсы (только монеты)
+            GAME_STATE.resources.coin -= totalCost;
             this.addTopUI(); // Обновляем UI ресурсов
+            
+            // Обновляем информацию о лимите
+            const academyLevel = GAME_STATE.buildings.ACADEMY.level;
+            const unitLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+            const currentUnits = Object.values(GAME_STATE.units).reduce((a, b) => a + b, 0);
+            this.limitInfoText.text = `Лимит юнитов: ${currentUnits}/${unitLimit} (Уровень Академии: ${academyLevel})`;
+            this.limitInfoText.style.fill = currentUnits >= unitLimit ? 0xFF4444 : 0x00FF00;
 
             const queue = GAME_STATE.unitQueues[type];
             let startTime = Date.now();
@@ -1704,9 +2223,10 @@ class AcademyScene extends BaseScene {
                 queue.push({ type, startTime, finish, power });
                 startTime = finish;
             }
+            
+            saveGame(); // Сохраняем прогресс после найма
         } else {
-            // ВОТ ЗДЕСЬ ПОЯВЛЯЕТСЯ ОКНО С КНОПКОЙ "ОК"
-            this.showInfoModal("Мало ресурсов", "Не хватает денег или рыбы!");
+            this.showInfoModal("Мало ресурсов", `Не хватает монет! Нужно: ${totalCost} Coin`);
         }
     }
 
@@ -1736,7 +2256,7 @@ class AcademyScene extends BaseScene {
 // ================== ГЛОБАЛЬНЫЙ ТИКЕР (ЛОГИКА) ============================
 // =========================================================================
 
-let lastSaveTime = Date.now(); // Глобальная переменная для сохранения
+let lastSaveTime = Date.now();
 
 function gameTick() {
     const now = Date.now();
@@ -1745,11 +2265,12 @@ function gameTick() {
     // Очередь юнитов
     for(let k in GAME_STATE.unitQueues) {
         const q = GAME_STATE.unitQueues[k];
-        if(q.length > 0) {
+        if(q && q.length > 0) {
             if(now >= q[0].finish) {
                 const done = q.shift();
-                GAME_STATE.units[done.type]++;
+                GAME_STATE.units[done.type] = (GAME_STATE.units[done.type] || 0) + 1;
                 updated = true;
+                saveGame(); // Сохраняем когда юнит готов
             }
         }
     }
@@ -1757,15 +2278,19 @@ function gameTick() {
     // Апгрейды и ПОСТРОЙКА зданий
     for(let k in GAME_STATE.buildings) {
         const b = GAME_STATE.buildings[k];
+        if(!b) continue;
         
         // Логика АПГРЕЙДА (уровня)
         if(b.isUpgrading) {
             if(now >= b.upgradeStartTime + b.upgradeDuration) {
-                b.level++;
+                b.level = (b.level || 1) + 1;
                 b.isUpgrading = false;
-                if(k === 'BANK') updateGameCalculations(); 
-                if(k === 'MARKET') updateGameCalculations(); 
+                // При апгрейде DEFENSE_TOWER обновляем расчеты
+                if(k === 'BANK' || k === 'MARKET' || k === 'DEFENSE_TOWER') {
+                    updateGameCalculations();
+                }
                 updated = true;
+                saveGame(); // Сохраняем когда апгрейд завершен
             }
         }
 
@@ -1776,34 +2301,45 @@ function gameTick() {
                 b.isConstructing = false;
                 updated = true;
                 
+                // При постройке DEFENSE_TOWER устанавливаем уровень 1
+                if(k === 'DEFENSE_TOWER' && b.level === 0) {
+                    b.level = 1;
+                    updateGameCalculations(); // Обновляем лимиты защиты
+                }
+                
                 // Если мы в главном меню, надо перерисовать здания
-                if(SceneManager.currentScene instanceof MainMenuScene) {
+                if(SceneManager && SceneManager.currentScene && SceneManager.currentScene instanceof MainMenuScene) {
                     SceneManager.currentScene.renderBuildings();
                 }
+                saveGame(); // Сохраняем когда постройка завершена
             }
         }
     }
 
-    // Доход
+    // Доход (с защитой от переполнения)
     if(now - GAME_STATE.lastIncomeTime >= 1000) {
         if(GAME_STATE.incomePerSecond > 0) {
-            if(GAME_STATE.resources.coin < GAME_STATE.storageCapacity.coin) {
-                GAME_STATE.resources.coin += GAME_STATE.incomePerSecond;
-                if(GAME_STATE.resources.coin > GAME_STATE.storageCapacity.coin) {
-                    GAME_STATE.resources.coin = GAME_STATE.storageCapacity.coin;
-                }
+            const maxCoin = GAME_STATE.storageCapacity.coin || Infinity;
+            if(GAME_STATE.resources.coin < maxCoin) {
+                GAME_STATE.resources.coin = Math.min(
+                    GAME_STATE.resources.coin + GAME_STATE.incomePerSecond,
+                    maxCoin
+                );
                 updated = true;
             }
         }
         GAME_STATE.lastIncomeTime = now;
     }
 
-    if(updated && SceneManager.currentScene) {
-        SceneManager.currentScene.updateTotalPower(); 
-        if(SceneManager.currentScene.addTopUI) SceneManager.currentScene.addTopUI();
+    if(updated && SceneManager && SceneManager.currentScene) {
+        // Обновляем только один раз!
+        if(SceneManager.currentScene.updateTotalPower) {
+            SceneManager.currentScene.updateTotalPower();
+        }
     }
-    // --- АВТОСОХРАНЕНИЕ --- <-- ВСТАВИТЬ ЭТОТ БЛОК СЮДА
-    if(now - lastSaveTime > 10000) { // Сохраняем каждые 10 секунд
+    
+    // Автосохранение каждые 30 секунд
+    if(now - lastSaveTime > 30000) {
         saveGame();
         lastSaveTime = now;
     }
@@ -1812,15 +2348,27 @@ function gameTick() {
 async function init() {
     console.log("Start Init");
     app = new PIXI.Application();
-    await app.init({ width: APP_WIDTH, height: APP_HEIGHT, background: '#000000' });
     
-    // --- ВАЖНЫЙ ФИКС ДЛЯ IPHONE ---
+    try {
+        await app.init({ width: APP_WIDTH, height: APP_HEIGHT, background: '#000000' });
+    } catch (e) {
+        console.error("Ошибка инициализации PIXI:", e);
+        alert("Ошибка загрузки игры. Проверьте консоль.");
+        return;
+    }
+    
     app.canvas.style.touchAction = 'none'; 
+    app.canvas.style.overscrollBehavior = 'none';
     app.canvas.style.overscrollBehavior = 'none';
     document.body.style.overscrollBehavior = 'none';
     document.body.style.overflow = 'hidden';
 
-    document.getElementById('pixi-container').appendChild(app.canvas);
+    const container = document.getElementById('pixi-container');
+    if (!container) {
+        console.error("Элемент #pixi-container не найден!");
+        return;
+    }
+    container.appendChild(app.canvas);
     
     window.addEventListener('resize', resize);
     resize();
@@ -1829,14 +2377,14 @@ async function init() {
         await PIXI.Assets.load(Object.values(ASSETS));
     } catch(e) {
         console.error("Asset load error", e);
+        // Продолжаем даже если ассеты не загрузились
     }
 
     SceneManager = new SceneController(app);
     
-    // ! ИСПРАВЛЕНИЕ: ЗАГРУЗКА СОСТОЯНИЯ ИГРЫ !
-    loadGame(); // <-- ЭТО ВЫЗЫВАЕТ ЗАГРУЗКУ
-    
-    updateGameCalculations(); // <-- ТЕПЕРЬ СТАТИСТИКА ПЕРЕСЧИТЫВАЕТСЯ ПОСЛЕ ЗАГРУЗКИ
+    // ЗАГРУЗКА ИГРЫ И ОБНОВЛЕНИЕ РАСЧЕТОВ
+    loadGame();
+    updateGameCalculations();
     
     SceneManager.changeScene(MainMenuScene);
     
@@ -1854,4 +2402,9 @@ function resize() {
     app.canvas.style.width = `${nw}px`; app.canvas.style.height = `${nh}px`;
 }
 
-window.onload = init;
+// Проверяем, что PIXI загружен
+if (typeof PIXI === 'undefined') {
+    console.error("PIXI.js не загружен! Проверьте подключение библиотеки.");
+} else {
+    window.onload = init;
+}
