@@ -4,6 +4,7 @@ const APP_HEIGHT = 1280;
 
 let app;
 let SceneManager; 
+let __pointerActive = false; // флаг: пользователь взаимодействует с приложением (для предотвращения нативных тач-жестов)
 
 // --- ДАННЫЕ ЗДАНИЙ (ДОБАВЛЯЕМ НОВЫЙ ОБЪЕКТ!) ---
 const BUILDING_DATA = {
@@ -220,6 +221,9 @@ const ASSETS = {
 
     icon_power_cat: { alias: 'icon_power_cat', src: 'images/heroes_icon.png' }, 
     settings_icon: { alias: 'settings_icon', src: 'images/settings_icon.png' }, 
+
+    // Пользовательская модель (поместите файл images/satoshi.png в папку webapp/images)
+    satoshi: { alias: 'satoshi', src: 'images/satoshi.png' },
 
     icon_res_coin: { alias: 'icon_res_coin', src: 'images/icon_res_coin.png' },
     icon_res_gem: { alias: 'icon_res_gem', src: 'images/icon_res_gem.png' },
@@ -636,6 +640,14 @@ class BaseScene extends PIXI.Container {
     }
     
     showInfoModal(title, text) {
+        // Закрываем активное меню (например, меню здания), чтобы модалка была сверху
+        try {
+            if (this.manager && this.manager.currentScene && this.manager.currentScene.activeMenu) {
+                this.manager.currentScene.closeMenu();
+            }
+        } catch (e) {
+            // ignore
+        }
         if(this.infoModal) this.infoModal.destroy({children:true});
         const W = APP_WIDTH * 0.85, H = APP_HEIGHT * 0.4;
         const m = new PIXI.Container();
@@ -739,23 +751,31 @@ class BaseScene extends PIXI.Container {
         };
         
         hitArea.on('pointerdown', (e) => {
+            if (e.stopPropagation) e.stopPropagation();
+            try { if (e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); } catch(_){}
             isDragging = true;
             const local = container.toLocal(e.global);
             updateSlider(local.x);
         });
         
         hitArea.on('pointermove', (e) => {
+            if (e.stopPropagation) e.stopPropagation();
+            try { if (e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); } catch(_){}
             if (isDragging) {
                 const local = container.toLocal(e.global);
                 updateSlider(local.x);
             }
         });
         
-        hitArea.on('pointerup', () => {
+        hitArea.on('pointerup', (e) => {
+            if (e.stopPropagation) e.stopPropagation();
+            try { if (e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); } catch(_){}
             isDragging = false;
         });
         
-        hitArea.on('pointerupoutside', () => {
+        hitArea.on('pointerupoutside', (e) => {
+            if (e.stopPropagation) e.stopPropagation();
+            try { if (e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); } catch(_){}
             isDragging = false;
         });
         
@@ -769,10 +789,12 @@ class BaseScene extends PIXI.Container {
 
     // --- МЕНЮ НАСТРОЕК ---
     openSettingsMenu() {
+        // Закрываем активное меню перед открытием модалки
+        try { this.closeMenu(); } catch (_) {}
         if(this.infoModal) this.infoModal.destroy({children:true});
         const W = APP_WIDTH * 0.85, H = APP_HEIGHT * 0.4;
         const m = new PIXI.Container();
-        m.zIndex = 300; m.x = APP_WIDTH/2; m.y = APP_HEIGHT/2;
+        m.zIndex = 1000; m.x = APP_WIDTH/2; m.y = APP_HEIGHT/2;
         m.eventMode='static';
         this.infoModal = m;
         this.addChild(m);
@@ -857,6 +879,11 @@ class SceneController {
         }
         this.currentScene = new Class(this);
         this.app.stage.addChild(this.currentScene);
+        // Удаляем DOM-экран загрузки при переходе между сценами (если остался)
+        try {
+            const loaderEl = document.getElementById('loading-screen');
+            if (loaderEl) loaderEl.remove();
+        } catch(e) {}
         this.currentScene.init(param);
     }
 }
@@ -1159,10 +1186,12 @@ class MainMenuScene extends BaseScene {
     }
 
     showUnitList() {
+        // Закрываем активное меню (например, открытое меню здания), чтобы кнопки не оставались сверху
+        try { this.closeMenu(); } catch (_) {}
         if(this.infoModal) this.infoModal.destroy({children:true});
         const W = APP_WIDTH*0.9, H = APP_HEIGHT*0.7;
         const c = new PIXI.Container();
-        c.zIndex=200; c.x=APP_WIDTH/2; c.y=APP_HEIGHT/2;
+        c.zIndex=1000; c.x=APP_WIDTH/2; c.y=APP_HEIGHT/2;
         c.eventMode='static';
         this.infoModal = c;
         this.addChild(c);
@@ -1243,14 +1272,21 @@ class MainMenuScene extends BaseScene {
             btnCont.addChild(hitArea);
 
             let icon;
-            if(PIXI.Assets.cache.has(btn.icon)) {
+            // Для кнопки "Герои" показываем модель satoshi если она доступна
+            if (btn.text === "Герои" && ASSETS.satoshi && PIXI.Assets.cache.has(ASSETS.satoshi.alias)) {
+                icon = PIXI.Sprite.from(ASSETS.satoshi.alias);
+                icon.anchor.set(0.5); icon.scale.set(0.06); icon.y = -10;
+                // Чтобы кнопка ловила события, делаем модель неинтерактивной
+                try { icon.eventMode = 'none'; } catch(_) {}
+            } else if(PIXI.Assets.cache.has(btn.icon)) {
                 icon = PIXI.Sprite.from(btn.icon);
                 icon.anchor.set(0.5); icon.scale.set(0.08); icon.y = -10; 
+                icon.eventMode = 'none';
             } else {
                 icon = new PIXI.Text("?", {fontSize:24, fill:0xFFFFFF});
                 icon.anchor.set(0.5); icon.y=-10;
+                icon.eventMode = 'none';
             }
-            icon.eventMode = 'none'; 
             
             const text = new PIXI.Text(btn.text, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF, fontWeight:'bold'});
             text.anchor.set(0.5); text.y = 30; 
@@ -1273,7 +1309,8 @@ class DefenseScene extends BaseScene {
     init() {
         super.init();
         this.addBackgroundCover('fon_academy');
-        this.addTopUI();
+        // Убираем стандартный верхний UI для полноэкранного героя
+        try { this.children.filter(c => c.isTopUI).forEach(c => c.destroy({children:true})); } catch(_) {}
 
         // Заголовок сцены
         const title = new PIXI.Text("СИСТЕМА ОБОРОНЫ", {fontFamily:'Arial', fontSize:32, fill:0xFF4444, fontWeight:'bold', stroke: 0x000000, strokeThickness: 4});
@@ -1323,8 +1360,10 @@ class DefenseScene extends BaseScene {
         // Переносим inputBg наверх, чтобы он перехватывал тачи/драг события
         this.addChildAt(inputBg, 0);
 
-        inputBg.on('pointerdown', (e)=>{ this.isDragging = true; this.lastY = e.global.y; });
+        inputBg.on('pointerdown', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging = true; this.lastY = e.global.y; });
         inputBg.on('globalpointermove', (e)=>{ 
+            if(e.stopPropagation) e.stopPropagation();
+            try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ }
             if(this.isDragging) {
                 const dy = e.global.y - this.lastY;
                 this.scrollContent.y += dy;
@@ -1332,14 +1371,14 @@ class DefenseScene extends BaseScene {
                 this.clampScroll();
             }
         });
-        inputBg.on('pointerup', ()=>this.isDragging=false);
-        inputBg.on('pointerupoutside', ()=>this.isDragging=false);
+        inputBg.on('pointerup', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
+        inputBg.on('pointerupoutside', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
     }
 
     clampScroll() {
-        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
+        if(this.scrollContent.y > this.viewY) this.scrollContent.y = this.viewY;
         const contentHeight = (this._defenseContentHeight || 1000);
-        const minY = Math.min(-contentHeight + this.viewH + 80, 0);
+        const minY = Math.min(this.viewY + this.viewH - contentHeight, this.viewY);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
@@ -1375,26 +1414,10 @@ class DefenseScene extends BaseScene {
             .stroke({width:2, color: 0xFF4444});
         p.addChild(bg);
 
-        // Иконка
-        const iconAlias = data.icon || 'icon_power_cat';
-        if(PIXI.Assets.cache.has(iconAlias)){
-            const ic = PIXI.Sprite.from(iconAlias);
-            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=60;
-            p.addChild(ic);
-        }
-
-        // Название
-        const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF, fontWeight:'bold'});
-        nameTxt.x=100; nameTxt.y=15; p.addChild(nameTxt);
-
-        // Доступно всего / На обороне
-        const totalUnits = GAME_STATE.units[typeKey] || 0;
-        const onDefense = GAME_STATE.defenseUnits[typeKey] || 0;
-        const available = totalUnits - onDefense;
-        
-        const statsTxt = new PIXI.Text(`Всего: ${totalUnits} | На обороне: ${onDefense} | Свободно: ${available}`, 
-            {fontFamily:'Arial', fontSize:14, fill:0xAAAAAA});
-        statsTxt.x=100; statsTxt.y=45; p.addChild(statsTxt);
+        // В этой панели не показываем полноэкранного героя — только данные по юниту
+        const available = GAME_STATE.units[typeKey] || 0;
+        const statsTxt = new PIXI.Text(`Доступно: ${available}`, {fontFamily:'Arial', fontSize:14, fill:0xAAAAAA});
+        statsTxt.x = 100; statsTxt.y = 45; p.addChild(statsTxt);
 
         // Сила
         const powerInfo = new PIXI.Text(`Мощь: +${tier.power || 0}`, {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
@@ -1634,87 +1657,141 @@ class HeroesScene extends BaseScene {
         this.addBackgroundCover('fon_academy');
         this.addTopUI();
 
-        const title = new PIXI.Text("ГЛАВНОКОМАНДУЮЩИЙ", {fontFamily:'Arial', fontSize:32, fill:0xFFD700, fontWeight:'bold', stroke:0x000000, strokeThickness:4});
-        title.anchor.set(0.5); title.position.set(APP_WIDTH/2, 120);
-        this.addChild(title);
-
-        const hero = GAME_STATE.hero;
+        // Герой и его данные
+        const hero = GAME_STATE.hero || { level:1, xp:0, maxXp:100, skillPoints:0, stats:{str:0, cha:0, int:0} };
         // Лимит уровня героя зависит от Ратуши
         const centerLvl = GAME_STATE.buildings.CENTER ? GAME_STATE.buildings.CENTER.level : 1;
-        const maxHeroLevel = centerLvl * 5; 
+        const maxHeroLevel = centerLvl * 5;
 
-        // Аватар
-        const avatar = new PIXI.Graphics().circle(0,0,60).fill({color:0x444444}).stroke({width:4, color:0xFFD700});
-        avatar.position.set(APP_WIDTH/2, 220);
-        this.addChild(avatar);
-        
-        if(PIXI.Assets.cache.has(ASSETS.icon_power_cat.alias)) {
-            const icon = PIXI.Sprite.from(ASSETS.icon_power_cat.alias);
-            icon.anchor.set(0.5); icon.scale.set(0.15); icon.position.set(APP_WIDTH/2, 220);
-            this.addChild(icon);
+        // Показываем модель `satoshi` крупно в центре сцены
+        let heroAlias = null;
+        try { if (ASSETS.satoshi && PIXI.Assets.cache.has(ASSETS.satoshi.alias)) heroAlias = ASSETS.satoshi.alias; } catch(_){ }
+        if (!heroAlias) {
+            try { if (PIXI.Assets.cache.has(ASSETS.icon_power_cat.alias)) heroAlias = ASSETS.icon_power_cat.alias; } catch(_){ }
+        }
+        if (heroAlias) {
+            const model = PIXI.Sprite.from(heroAlias);
+            model.anchor.set(0.5);
+            // Масштабируем модель почти на весь экран (оставляем место под UI)
+            try {
+                const t = model.texture;
+                const w = (t.orig && t.orig.width) || t.width || 100;
+                const h = (t.orig && t.orig.height) || t.height || 100;
+                const maxW = APP_WIDTH * 0.95;
+                const maxH = (APP_HEIGHT - 160) * 0.95; // учитываем место для top UI и кнопки назад
+                const s = Math.min(maxW / w, maxH / h);
+                model.scale.set(s * 1.35); // немного увеличить модель дополнительно
+            } catch(_) { model.scale.set(0.7); }
+            model.position.set(APP_WIDTH/2, APP_HEIGHT/2 - 160); // поднять героя чуть выше
+            try { model.eventMode = 'none'; } catch(_) {}
+            this.addChild(model);
         }
 
-        // Текст уровня
-        const lvlTxt = new PIXI.Text(`Уровень ${hero.level} / ${maxHeroLevel}`, {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF, fontWeight:'bold'});
-        lvlTxt.anchor.set(0.5); lvlTxt.position.set(APP_WIDTH/2, 300);
+        // Позиционируем элементы UI под моделью героя, если модель есть
+        const barW = APP_WIDTH * 0.78; const barH = 18;
+        let baseY = APP_HEIGHT/2 + 80; // fallback
+        if (typeof model !== 'undefined' && model && model.height) {
+            baseY = model.position.y + (model.height / 2) + 80; // сдвигаем UI ниже под моделью
+        }
+
+        // Уровень героя
+        const lvlTxt = new PIXI.Text(`Уровень ${hero.level} / ${maxHeroLevel}`, {fontFamily:'Arial', fontSize:22, fill:0xFFD700, fontWeight:'bold'});
+        lvlTxt.anchor.set(0.5); lvlTxt.position.set(APP_WIDTH/2, baseY - 28);
         this.addChild(lvlTxt);
-        
-        if (hero.level >= maxHeroLevel) {
-            const warn = new PIXI.Text("(Лимит Ратуши! Улучши Town Hall)", {fontFamily:'Arial', fontSize:14, fill:0xFF4444});
-            warn.anchor.set(0.5); warn.position.set(APP_WIDTH/2, 325);
-            this.addChild(warn);
-        }
 
-        // Полоска опыта (XP Bar)
-        const barW = 400; const barH = 20;
-        const barBg = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW, barH, 10).fill({color:0x222222});
-        barBg.position.set(APP_WIDTH/2, 350);
-        
-        const pct = Math.min(1, hero.xp / hero.maxXp);
-        const barFill = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW * pct, barH, 10).fill({color:0x00AAFF});
+        // Полоска опыта
+        const barBg = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW, barH, 8).fill({color:0x222222}).stroke({width:2, color:0x333333});
+        barBg.position.set(APP_WIDTH/2, baseY + 4);
+        const pct = Math.max(0, Math.min(1, (hero.xp || 0) / (hero.maxXp || 100)));
+        const barFill = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW * pct, barH, 8).fill({color:0x39FF14});
         barBg.addChild(barFill);
-        
-        const xpTxt = new PIXI.Text(`${hero.xp.toFixed(0)} / ${hero.maxXp} XP`, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF});
-        xpTxt.anchor.set(0.5);
+        const xpTxt = new PIXI.Text(`${Math.floor(hero.xp || 0)} / ${hero.maxXp} XP`, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF});
+        xpTxt.anchor.set(0.5); xpTxt.position.set(0, 0);
         barBg.addChild(xpTxt);
         this.addChild(barBg);
 
         // Очки навыков
-        const ptsTxt = new PIXI.Text(`Очки Навыков: ${hero.skillPoints}`, {fontFamily:'Arial', fontSize:20, fill:0x00FF00, fontWeight:'bold'});
-        ptsTxt.anchor.set(0.5); ptsTxt.position.set(APP_WIDTH/2, 400);
+        const ptsTxt = new PIXI.Text(`Очки: ${hero.skillPoints || 0}`, {fontFamily:'Arial', fontSize:16, fill:0x00FF00, fontWeight:'bold'});
+        ptsTxt.anchor.set(0.5); ptsTxt.position.set(APP_WIDTH/2, baseY + 34);
         this.addChild(ptsTxt);
 
-        // Статы
-        this.createStatRow("СИЛА (+Power)", hero.stats.str, 450, 'str');
-        this.createStatRow("ХАРИЗМА (+Unit Limit)", hero.stats.cha, 520, 'cha');
-        this.createStatRow("ИНТЕЛЛЕКТ (+XP Gain)", hero.stats.int, 590, 'int');
-
-        // КНОПКА ТРЕНИРОВКИ (Получение опыта за рыбу)
-        // Формула: 50 базового опыта + (Интеллект * 5)
-        const xpGain = 50 + (hero.stats.int * 5); 
+        // Кнопка тренировки — даёт XP за рыбу
+        const xpGain = 50 + ((hero.stats && hero.stats.int) ? hero.stats.int * 5 : 0);
         const fishCost = 200;
+        const trainBtn = this.createSimpleButton(`ТРЕНИРОВАТЬ (+${xpGain} XP)`, () => {
+            if (hero.level >= maxHeroLevel) { this.showInfoModal("Лимит", "Уровень героя ограничен уровнем Ратуши!"); return; }
+            if (GAME_STATE.resources.fish >= fishCost) {
+                GAME_STATE.resources.fish -= fishCost;
+                this.addXp(xpGain);
+                saveGame();
+                this.init();
+            } else {
+                this.showInfoModal("Ошибка", "Не хватает рыбы для тренировки!");
+            }
+        }, 0xFF8C00, 220, 48);
+        trainBtn.x = APP_WIDTH/2; trainBtn.y = baseY + 72; trainBtn.zIndex = 1000; this.addChild(trainBtn);
 
-        const trainBtn = this.createSimpleButton(`ТРЕНИРОВАТЬСЯ (${fishCost} Fish)`, () => {
-             if (hero.level >= maxHeroLevel) {
-                 this.showInfoModal("Лимит", "Уровень героя ограничен уровнем Ратуши!");
-                 return;
-             }
-             if (GAME_STATE.resources.fish >= fishCost) {
-                 GAME_STATE.resources.fish -= fishCost;
-                 this.addXp(xpGain);
-                 this.init(); // Перерисовка
-                 this.addTopUI(); // Обновление UI
-                 saveGame();
-             } else {
-                 this.showInfoModal("Ошибка", "Не хватает рыбы!");
-             }
-        }, 0xFF8C00, 320, 60);
-        trainBtn.position.set(APP_WIDTH/2, 700);
-        this.addChild(trainBtn);
+        // Строки характеристик — показываем сразу под кнопкой тренировки
+        const startY = baseY + 120;
+        this.createStatRow("СИЛА (+Power)", hero.stats.str, startY, 'str');
+        this.createStatRow("ХАРИЗМА (+Unit Limit)", hero.stats.cha, startY + 40, 'cha');
+        this.createStatRow("ИНТЕЛЛЕКТ (+XP Gain)", hero.stats.int, startY + 80, 'int');
 
-        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0x555555);
-        back.position.set(APP_WIDTH/2, APP_HEIGHT - 80);
-        this.addChild(back);
+        // Кнопка назад — маленькая и в левом верхнем углу
+        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0x555555, 110, 40);
+        back.x = 70; back.y = 40; back.zIndex = 1000; this.addChild(back);
+
+        // Нижняя навигация (копия из MainMenuScene.addBottomNavigation)
+        (function(self){
+            const H_POS = APP_HEIGHT - 60;
+            const navContainer = new PIXI.Container();
+            navContainer.position.set(0, H_POS);
+            navContainer.zIndex = 1000;
+            self.addChild(navContainer);
+            const bg = new PIXI.Graphics().rect(0, -50, APP_WIDTH, 110).fill({color:0x000000, alpha:0.85}).stroke({width:2, color:0x333333, alignment:0});
+            navContainer.addChild(bg);
+
+            const buttons = [
+                { icon: ASSETS.icon_map.alias, text: "Карта", action: ()=>self.showInfoModal("Карта", "Переход на карту (в разработке)") },
+                { icon: ASSETS.icon_train.alias, text: "Атака", action: ()=>self.showInfoModal("Атака", "Сцена атаки (в разработке)") },
+                { icon: ASSETS.icon_upgrade.alias, text: "Герои", action: ()=>self.manager.changeScene(HeroesScene) },
+                { icon: ASSETS.icon_friends.alias, text: "Друзья", action: ()=>self.manager.changeScene(FriendsScene) },
+                { icon: ASSETS.icon_power_cat.alias, text: "Задания", action: ()=>self.manager.changeScene(QuestsScene) }
+            ];
+
+            const btnWidth = APP_WIDTH / buttons.length;
+            buttons.forEach((btn, i) => {
+                const btnCont = new PIXI.Container();
+                btnCont.x = (i * btnWidth) + (btnWidth / 2);
+                btnCont.y = 0;
+
+                const hitArea = new PIXI.Graphics()
+                    .rect(-btnWidth/2, -50, btnWidth, 110)
+                    .fill({color:0xFFFFFF, alpha:0.001});
+                hitArea.eventMode='static'; hitArea.cursor='pointer';
+                hitArea.on('pointertap', btn.action);
+                hitArea.on('pointerdown', () => btnCont.scale.set(0.95));
+                hitArea.on('pointerup', () => btnCont.scale.set(1));
+                hitArea.on('pointerupoutside', () => btnCont.scale.set(1));
+
+                btnCont.addChild(hitArea);
+
+                let icon;
+                if(PIXI.Assets.cache.has(btn.icon)) {
+                    icon = PIXI.Sprite.from(btn.icon);
+                    icon.anchor.set(0.5); icon.scale.set(0.08); icon.y = -10;
+                } else {
+                    icon = new PIXI.Text("?", {fontSize:24, fill:0xFFFFFF}); icon.anchor.set(0.5); icon.y=-10;
+                }
+                icon.eventMode = 'none';
+
+                const text = new PIXI.Text(btn.text, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF, fontWeight:'bold'});
+                text.anchor.set(0.5); text.y = 30; text.eventMode='none';
+
+                btnCont.addChild(icon, text);
+                navContainer.addChild(btnCont);
+            });
+        })(this);
     }
 
     createStatRow(label, val, y, statKey) {
@@ -1796,10 +1873,14 @@ class CryptoLabScene extends BaseScene {
         this.addChildAt(inputBg, 0);
 
         inputBg.on('pointerdown', (e)=>{
+            if(e.stopPropagation) e.stopPropagation();
+            try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ }
             this.isDragging = true;
             this.lastY = e.global.y;
         });
         inputBg.on('globalpointermove', (e)=>{
+            if(e.stopPropagation) e.stopPropagation();
+            try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ }
             if(this.isDragging) {
                 const dy = e.global.y - this.lastY;
                 this.scrollContent.y += dy;
@@ -1807,14 +1888,14 @@ class CryptoLabScene extends BaseScene {
                 this.clampScroll();
             }
         });
-        inputBg.on('pointerup', ()=>this.isDragging=false);
-        inputBg.on('pointerupoutside', ()=>this.isDragging=false);
+        inputBg.on('pointerup', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
+        inputBg.on('pointerupoutside', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
     }
 
     clampScroll() {
-        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
+        if(this.scrollContent.y > this.viewY) this.scrollContent.y = this.viewY;
         const contentHeight = (this._computedMaxY || 1200);
-        const minY = Math.min(-contentHeight + this.viewH + 100, -150);
+        const minY = Math.min(this.viewY + this.viewH - contentHeight, this.viewY - 150);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
@@ -2123,8 +2204,10 @@ class AcademyScene extends BaseScene {
         inputBg.eventMode='static';
         this.addChildAt(inputBg, 0);
 
-        inputBg.on('pointerdown', (e)=>{ this.isDragging = true; this.lastY = e.global.y; });
+        inputBg.on('pointerdown', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging = true; this.lastY = e.global.y; });
         inputBg.on('globalpointermove', (e)=>{ 
+            if(e.stopPropagation) e.stopPropagation();
+            try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ }
             if(this.isDragging) {
                 const dy = e.global.y - this.lastY;
                 this.scrollContent.y += dy;
@@ -2132,8 +2215,8 @@ class AcademyScene extends BaseScene {
                 this.clampScroll();
             }
         });
-        inputBg.on('pointerup', ()=>this.isDragging=false);
-        inputBg.on('pointerupoutside', ()=>this.isDragging=false);
+        inputBg.on('pointerup', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
+        inputBg.on('pointerupoutside', (e)=>{ if(e.stopPropagation) e.stopPropagation(); try{ if(e.data && e.data.originalEvent) e.data.originalEvent.preventDefault(); }catch(_){ } this.isDragging=false; });
 
         // Запускаем обновление прогресс-баров
         this.updFn = ()=>this.updateBars();
@@ -2147,9 +2230,9 @@ class AcademyScene extends BaseScene {
 
     // Ограничение прокрутки
     clampScroll() {
-        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
+        if(this.scrollContent.y > this.viewY) this.scrollContent.y = this.viewY;
         const contentHeight = (this._academyContentHeight || 1000);
-        const minY = Math.min(-contentHeight + this.viewH + 80, 0);
+        const minY = Math.min(this.viewY + this.viewH - contentHeight, this.viewY);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
@@ -2480,24 +2563,43 @@ function gameTick() {
     // Прелоадер ассетов с прогресс-колбэком (используется для заполнения кубиков на loading-screen)
     function preloadAssetsWithProgress(assetArray, onProgress) {
         return new Promise((resolve) => {
-            const urls = assetArray.map(a => a.src || (a && a.alias) || a).filter(Boolean);
+            const urls = assetArray.map(a => a && (a.src || a.alias || a)).filter(Boolean);
             const total = urls.length;
             if (total === 0) { if(onProgress) onProgress(1); resolve(); return; }
             let loaded = 0;
+            let finished = false;
+
+            const finish = (force) => {
+                if (finished) return; finished = true;
+                if (force && onProgress) onProgress(1);
+                resolve();
+            };
+
+            // Safety timeout: если что-то висит — завершаем через 8 секунд
+            const timeoutId = setTimeout(() => {
+                console.warn('Preload timeout reached, continuing startup');
+                finish(true);
+            }, 8000);
+
             urls.forEach(u => {
                 try {
                     const img = new Image();
                     img.onload = img.onerror = () => {
+                        if (finished) return;
                         loaded++;
                         if (onProgress) onProgress(loaded / total);
-                        if (loaded === total) resolve();
+                        if (loaded === total) {
+                            clearTimeout(timeoutId);
+                            finish(false);
+                        }
                     };
                     img.src = u;
                 } catch (e) {
-                    // В случае ошибки всё равно учитываем ресурс как "загруженный"
+                    // В случае ошибки учитываем ресурс как "загруженный"
+                    if (finished) return;
                     loaded++;
                     if (onProgress) onProgress(loaded / total);
-                    if (loaded === total) resolve();
+                    if (loaded === total) { clearTimeout(timeoutId); finish(false); }
                 }
             });
         });
@@ -2527,12 +2629,19 @@ async function init() {
         return;
     }
     container.appendChild(app.canvas);
+    // Блокируем нативные жесты при взаимодействии с канвой
+    app.view.addEventListener('pointerdown', ()=>{ __pointerActive = true; }, {passive:false});
+    document.addEventListener('pointerup', ()=>{ __pointerActive = false; }, {passive:false});
+    document.addEventListener('pointercancel', ()=>{ __pointerActive = false; }, {passive:false});
+    // Предотвращаем дефолтный touchmove, если пользователь держит палец в приложении
+    document.addEventListener('touchmove', (e)=>{ if(__pointerActive) e.preventDefault(); }, {passive:false});
     
     window.addEventListener('resize', resize);
     resize();
 
     // Предзагрузка изображений чтобы показать прогресс (кубики)
     try {
+        console.log('Init: starting image preloader');
         const progressEl = document.getElementById('loading-progress');
         const cubes = progressEl ? Array.from(progressEl.querySelectorAll('.cube')) : [];
 
@@ -2542,10 +2651,12 @@ async function init() {
                 cubes.forEach((c, i) => c.classList.toggle('filled', i < filled));
             }
         });
+        console.log('Init: preloader finished');
 
         // Затем даём PIXI зарегистрировать/зарузить ассеты (кэш браузера минимизирует повторную загрузку)
         try {
             await PIXI.Assets.load(Object.values(ASSETS));
+            console.log('Init: PIXI.Assets.load finished');
         } catch(e) {
             console.error("Asset load error", e);
             // Продолжаем даже если ассеты не загрузились
@@ -2554,22 +2665,34 @@ async function init() {
         console.warn('Preload error:', e);
     }
 
+    console.log('Init: creating SceneManager');
     SceneManager = new SceneController(app);
-    
+
     // ЗАГРУЗКА ИГРЫ И ОБНОВЛЕНИЕ РАСЧЕТОВ
-    loadGame();
-    updateGameCalculations();
-    
-    SceneManager.changeScene(MainMenuScene);
-    // Скрываем DOM-экран загрузки (если он есть)
     try {
-        const loaderEl = document.getElementById('loading-screen');
-        if (loaderEl) {
-            loaderEl.style.display = 'none';
-            // loaderEl.remove(); // можно полностью удалить элемент при желании
-        }
+        console.log('Init: loading game state');
+        loadGame();
+        updateGameCalculations();
     } catch (e) {
-        console.warn('Не удалось скрыть loading-screen:', e);
+        console.error('Init: error during loadGame/updateGameCalculations', e);
+    }
+
+    try {
+        console.log('Init: changing to MainMenuScene');
+        await SceneManager.changeScene(MainMenuScene);
+        console.log('Init: MainMenuScene loaded');
+    } catch (e) {
+        console.error('Init: error while changing to MainMenuScene', e);
+        // Попытка показать сцену все равно, чтобы приложение не висло
+        try { SceneManager.currentScene = new MainMenuScene(SceneManager); app.stage.addChild(SceneManager.currentScene); SceneManager.currentScene.init(); } catch(err){ console.error('Init: fallback scene creation failed', err); }
+    } finally {
+        // Гарантированно удаляем DOM-экран загрузки
+        try {
+            const loaderEl = document.getElementById('loading-screen');
+            if (loaderEl) loaderEl.remove();
+        } catch (e) {
+            console.warn('Не удалось удалить loading-screen:', e);
+        }
     }
     
     app.ticker.add(gameTick);
