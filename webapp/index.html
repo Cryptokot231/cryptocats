@@ -32,12 +32,60 @@
             border-radius: 15px;
             /* Важно для адаптивности, будет масштабироваться JS */
         }
+        /* Экран загрузки: занимает весь контейнер пока игра инициализируется */
+        #loading-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000000;
+            z-index: 9999;
+        }
+        #loading-screen img {
+            max-width: 60vw;
+            max-height: 80vh;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+        #loading-inner { text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
+        /* Немного ниже: кубики опущены ближе к картинке */
+        #loading-progress { margin-top: 8px; transform: translateY(-90px); position: relative; z-index: 10001; }
+        .cubes { display:flex; gap:8px; justify-content:center; align-items:center; }
+        .cube { width:16px; height:16px; background:#330000; border-radius:3px; display:inline-block; box-shadow: inset 0 -3px 6px rgba(0,0,0,0.6); transition: background 220ms, transform 120ms, box-shadow 220ms; }
+        .cube.filled { background:#FF4444; transform: scale(1.04); box-shadow: 0 0 8px rgba(255,68,68,0.6); }
     </style>
 </head>
 <body>
     <div id="pixi-container">
         <!-- Холст PIXI будет вставлен сюда -->
         <p style="color: white; font-family: Arial;"></p>
+    </div>
+
+    <!-- Экран загрузки (показывает ваше изображение load.png в папке images) -->
+    <div id="loading-screen">
+        <div id="loading-inner">
+            <img src="images/load.png" alt="Loading">
+            <div id="loading-progress" aria-hidden="true">
+                <div class="cubes">
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                    <span class="cube"></span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 

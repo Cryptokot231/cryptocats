@@ -23,34 +23,34 @@ const UNIT_DATA = {
     ScoutCat: {
         type: 'ScoutCat',
         icon: 'icon_res_energy', 
-        T1: { name: 'Scout T1', cost: { coin: 50 }, time: 3, power: 15 }, 
-        T2: { name: 'Scout T2', cost: { coin: 400 }, time: 6, power: 75 }, 
-        T3: { name: 'Scout T3', cost: { coin: 2000 }, time: 20, power: 375 }, 
-        T4: { name: 'Scout T4', cost: { coin: 8000 }, time: 60, power: 1500 }, 
+        T1: { name: 'Scout T1', cost: { coin: 50 }, time: 3, power: 15, upkeep: 0.1 }, 
+        T2: { name: 'Scout T2', cost: { coin: 400 }, time: 6, power: 75, upkeep: 0.2 }, 
+        T3: { name: 'Scout T3', cost: { coin: 2000 }, time: 20, power: 375, upkeep: 0.5 }, 
+        T4: { name: 'Scout T4', cost: { coin: 8000 }, time: 60, power: 1500, upkeep: 1.0 }, 
     },
     DefenderCat: {
         type: 'DefenderCat',
         icon: 'icon_res_gold',
-        T1: { name: 'Defender T1', cost: { coin: 75 }, time: 4, power: 20 }, 
-        T2: { name: 'Defender T2', cost: { coin: 800 }, time: 10, power: 100 }, 
-        T3: { name: 'Defender T3', cost: { coin: 4000 }, time: 30, power: 500 }, 
-        T4: { name: 'Defender T4', cost: { coin: 16000 }, time: 120, power: 2000 }, 
+        T1: { name: 'Defender T1', cost: { coin: 75 }, time: 4, power: 20, upkeep: 0.15 }, 
+        T2: { name: 'Defender T2', cost: { coin: 800 }, time: 10, power: 100, upkeep: 0.3 }, 
+        T3: { name: 'Defender T3', cost: { coin: 4000 }, time: 30, power: 500, upkeep: 0.75 }, 
+        T4: { name: 'Defender T4', cost: { coin: 16000 }, time: 120, power: 2000, upkeep: 1.5 }, 
     },
     AttackerCat: {
         type: 'AttackerCat',
         icon: 'icon_res_gem',
-        T1: { name: 'Attacker T1', cost: { coin: 100 }, time: 5, power: 25 }, 
-        T2: { name: 'Attacker T2', cost: { coin: 1000 }, time: 12, power: 125 }, 
-        T3: { name: 'Attacker T3', cost: { coin: 5000 }, time: 40, power: 600 }, 
-        T4: { name: 'Attacker T4', cost: { coin: 20000 }, time: 180, power: 2500 }, 
+        T1: { name: 'Attacker T1', cost: { coin: 100 }, time: 5, power: 25, upkeep: 0.2 }, 
+        T2: { name: 'Attacker T2', cost: { coin: 1000 }, time: 12, power: 125, upkeep: 0.4 }, 
+        T3: { name: 'Attacker T3', cost: { coin: 5000 }, time: 40, power: 600, upkeep: 1.0 }, 
+        T4: { name: 'Attacker T4', cost: { coin: 20000 }, time: 180, power: 2500, upkeep: 2.0 }, 
     },
     EngineerCat: { 
         type: 'EngineerCat',
         icon: 'icon_build', 
-        T1: { name: 'Engineer T1', cost: { coin: 30 }, time: 2, power: 10 }, 
-        T2: { name: 'Engineer T2', cost: { coin: 600 }, time: 8, power: 50 }, 
-        T3: { name: 'Engineer T3', cost: { coin: 3000 }, time: 25, power: 300 }, 
-        T4: { name: 'Engineer T4', cost: { coin: 12000 }, time: 90, power: 1200 }, 
+        T1: { name: 'Engineer T1', cost: { coin: 30 }, time: 2, power: 10, upkeep: 0.05 }, 
+        T2: { name: 'Engineer T2', cost: { coin: 600 }, time: 8, power: 50, upkeep: 0.1 }, 
+        T3: { name: 'Engineer T3', cost: { coin: 3000 }, time: 25, power: 300, upkeep: 0.25 }, 
+        T4: { name: 'Engineer T4', cost: { coin: 12000 }, time: 90, power: 1200, upkeep: 0.5 }, 
     },
 };
 
@@ -99,11 +99,24 @@ let GAME_STATE = {
         gem: 500,
         fish: 1000,
     },
+    // --- ВСТАВИТЬ ПОСЛЕ storageCapacity ---
+    hero: {
+        level: 1,
+        xp: 0,
+        maxXp: 100,
+        skillPoints: 0,
+        stats: {
+            str: 0, // Сила (Дает бонус к Account Power)
+            cha: 0, // Харизма (Увеличивает лимит в Академии)
+            int: 0  // Интеллект (Увеличивает получаемый опыт)
+        }
+    },
     units: { ScoutCat: 0, DefenderCat: 0, AttackerCat: 0, EngineerCat: 0 }, 
     traders: { T1: 0, T2: 0, T3: 0, T4: 0 },
     unitQueues: { ScoutCat: [], DefenderCat: [], AttackerCat: [], EngineerCat: [] }, 
     totalPower: 0,
     incomePerSecond: 0,
+    upkeepPerHour: 0, // Новое поле: содержание юнитов в час
     lastIncomeTime: Date.now(),
     
     // Новое поле: юниты на обороне
@@ -264,7 +277,26 @@ function updateGameCalculations() {
     }
     GAME_STATE.incomePerSecond = totalIncomePerHour / 3600; 
     
-    // 4. Обновление UI (с защитой от ошибок)
+    // 4. Расчет содержания армии (UPKEEP)
+    let totalUpkeepPerHour = 0;
+    for(let unitType in GAME_STATE.units) {
+        const unitCount = GAME_STATE.units[unitType] || 0;
+        const unitData = UNIT_DATA[unitType];
+        if(unitData && unitData.T1) {
+            totalUpkeepPerHour += unitCount * (unitData.T1.upkeep || 0);
+        }
+    }
+    // Добавляем содержание юнитов на защите
+    for(let unitType in GAME_STATE.defenseUnits) {
+        const defenseCount = GAME_STATE.defenseUnits[unitType] || 0;
+        const unitData = UNIT_DATA[unitType];
+        if(unitData && unitData.T1) {
+            totalUpkeepPerHour += defenseCount * (unitData.T1.upkeep || 0);
+        }
+    }
+    GAME_STATE.upkeepPerHour = totalUpkeepPerHour;
+    
+    // 5. Обновление UI (с защитой от ошибок)
     if(SceneManager && SceneManager.currentScene && SceneManager.currentScene.updateTopUI) {
         SceneManager.currentScene.updateTopUI();
     }
@@ -274,7 +306,7 @@ function updateGameCalculations() {
 // ================== СОХРАНЕНИЕ / ЗАГРУЗКА ИГРЫ ===========================
 // =========================================================================
 
-const SAVE_KEY = 'cryptocats_save_v2'; // Изменил ключ для сброса старых багов
+const SAVE_KEY = 'cryptocats_save_v3'; // Изменил ключ для новой версии
 
 function saveGame() {
     try {
@@ -291,7 +323,7 @@ function saveGame() {
         }
         
         // Добавляем версию сохранения
-        stateToSave.saveVersion = 2;
+        stateToSave.saveVersion = 3;
         stateToSave.saveTimestamp = Date.now();
         
         localStorage.setItem(SAVE_KEY, JSON.stringify(stateToSave));
@@ -312,7 +344,7 @@ function loadGame() {
         const loadedState = JSON.parse(serializedState);
         
         // Проверка версии сохранения
-        if (!loadedState.saveVersion || loadedState.saveVersion < 2) {
+        if (!loadedState.saveVersion || loadedState.saveVersion < 3) {
             console.log("Старая версия сохранения, создаем новую игру");
             localStorage.removeItem(SAVE_KEY);
             return;
@@ -406,6 +438,10 @@ function loadGame() {
             GAME_STATE.incomePerSecond = loadedState.incomePerSecond;
         }
         
+        if (loadedState.upkeepPerHour !== undefined) {
+            GAME_STATE.upkeepPerHour = loadedState.upkeepPerHour;
+        }
+        
         if (loadedState.lastIncomeTime !== undefined) {
             GAME_STATE.lastIncomeTime = loadedState.lastIncomeTime;
         }
@@ -429,16 +465,20 @@ function loadGame() {
         const secondsOffline = Math.floor(timeSinceLastSave / 1000);
         
         if (secondsOffline > 1) { 
+            // Расчет дохода и содержания
             let incomeGained = (GAME_STATE.incomePerSecond || 0) * secondsOffline;
+            let upkeepCost = (GAME_STATE.upkeepPerHour || 0) / 3600 * secondsOffline;
             
             const currentCoin = GAME_STATE.resources.coin || 0;
             const maxCoin = GAME_STATE.storageCapacity.coin || Infinity;
             
-            // Расчет монеты
+            // Расчет монеты (доход минус содержание)
             if (currentCoin < maxCoin) {
-                 const coinGain = Math.min(incomeGained, maxCoin - currentCoin);
-                 GAME_STATE.resources.coin = currentCoin + coinGain;
-                 if (coinGain > 0) console.log(`Оффлайн-прогресс: +${coinGain.toFixed(0)} монет за ${secondsOffline} секунд.`);
+                const netGain = Math.max(0, incomeGained - upkeepCost);
+                const coinGain = Math.min(netGain, maxCoin - currentCoin);
+                GAME_STATE.resources.coin = currentCoin + coinGain;
+                if (coinGain > 0) console.log(`Оффлайн-прогресс: +${coinGain.toFixed(0)} монет за ${secondsOffline} секунд.`);
+                if (upkeepCost > 0) console.log(`Содержание: -${upkeepCost.toFixed(1)} монет`);
             }
         }
         
@@ -466,13 +506,30 @@ class BaseScene extends PIXI.Container {
     }
     
     init() {
-        this.updateTotalPower();
-    } 
+        this.updateTotalPower();let total = 0;
+        // Считаем силу юнитов
+        for (const typeKey in UNIT_DATA) {
+            const unitCount = (GAME_STATE.units[typeKey] || 0) + (GAME_STATE.defenseUnits[typeKey] || 0);
+            const uData = UNIT_DATA[typeKey];
+            if(uData) {
+                const unitPower = uData.T1.power || 0; 
+                total += unitCount * unitPower;
+            }
+        }
+        
+        // --- НОВОЕ: Добавляем силу героя (1 STR = 100 Power) ---
+        if(GAME_STATE.hero) {
+            total += (GAME_STATE.hero.stats.str * 100);
+        }
+
+        GAME_STATE.totalPower = total; 
+        this.addTopUI(); 
+    }
     
     addTopUI() {
         this.children.filter(c => c.isTopUI).forEach(c => c.destroy({children:true}));
 
-        const topBar = new PIXI.Graphics().rect(0, 0, APP_WIDTH, 80).fill({ color: 0x1A1A1A, alpha: 0.9 });
+        const topBar = new PIXI.Graphics().rect(0, 0, APP_WIDTH, 100).fill({ color: 0x1A1A1A, alpha: 0.9 });
         topBar.zIndex = 100;
         topBar.isTopUI = true;
         this.addChild(topBar);
@@ -490,11 +547,11 @@ class BaseScene extends PIXI.Container {
         const spacing = 160; 
         
         resList.forEach((res, i) => {
-             this.createResDisplay(topBar, res.icon, res.val, res.cap, startX + i * spacing, 40);
+             this.createResDisplay(topBar, res.icon, res.val, res.cap, startX + i * spacing, 50);
         });
         
         const powerCont = new PIXI.Container();
-        powerCont.position.set(APP_WIDTH - 20, 25); 
+        powerCont.position.set(APP_WIDTH - 20, 30); 
         topBar.addChild(powerCont);
         
         const iconP = PIXI.Sprite.from(ASSETS.icon_power_cat.alias);
@@ -512,18 +569,24 @@ class BaseScene extends PIXI.Container {
         pTextVal.x = 0; pTextVal.y = 15;
         powerCont.addChild(pTextVal);
         
+        // Доход и содержание
         let incomePerHour = (GAME_STATE.incomePerSecond * 3600).toFixed(0);
-        if(incomePerHour > 0) {
-            const incText = new PIXI.Text(`+${incomePerHour}/ч`, {fontFamily:'Arial', fontSize:14, fill:0x00FF00});
-            incText.anchor.set(1, 0.5);
-            incText.position.set(APP_WIDTH - 20, 65);
-            topBar.addChild(incText);
-        }
+        let upkeepPerHour = GAME_STATE.upkeepPerHour || 0;
+        let netIncome = incomePerHour - upkeepPerHour;
+        
+        const incText = new PIXI.Text(`Чистый доход: ${netIncome >= 0 ? '+' : ''}${netIncome.toFixed(0)}/ч`, {
+            fontFamily:'Arial', 
+            fontSize:14, 
+            fill: netIncome >= 0 ? 0x00FF00 : 0xFF4444
+        });
+        incText.anchor.set(1, 0.5);
+        incText.position.set(APP_WIDTH - 20, 80);
+        topBar.addChild(incText);
         
         // --- НАСТРОЙКИ (ШЕСТЕРЕНКА) ---
         const settBtn = PIXI.Sprite.from(ASSETS.settings_icon.alias);
         settBtn.anchor.set(0.5); settBtn.scale.set(0.06);
-        settBtn.x = APP_WIDTH - 25; settBtn.y = 110;
+        settBtn.x = APP_WIDTH - 25; settBtn.y = 130;
         settBtn.eventMode='static'; settBtn.cursor='pointer';
         settBtn.isTopUI = true; 
         settBtn.on('pointertap', () => this.openSettingsMenu());
@@ -557,7 +620,7 @@ class BaseScene extends PIXI.Container {
     updateTotalPower() {
         let total = 0;
         for (const typeKey in UNIT_DATA) {
-            const unitCount = GAME_STATE.units[typeKey];
+            const unitCount = (GAME_STATE.units[typeKey] || 0) + (GAME_STATE.defenseUnits[typeKey] || 0);
             const uData = UNIT_DATA[typeKey];
             if(uData) {
                 const unitPower = uData.T1.power || 0; 
@@ -616,22 +679,24 @@ class BaseScene extends PIXI.Container {
         const width = 200;
         const height = 30;
         
-        // Фон слайдера
+        // Фон слайдера (темный)
         const bg = new PIXI.Graphics()
             .roundRect(0, 0, width, height, height/2)
-            .fill({color: 0x333333});
+            .fill({color: 0x111111})
+            .stroke({width: 2, color: 0x333333});
         container.addChild(bg);
         
-        // Заполненная часть
+        // Заполненная часть (зеленая)
         const fill = new PIXI.Graphics()
             .roundRect(0, 0, width * ((initial - min) / (max - min)), height, height/2)
             .fill({color: 0x4CAF50});
         container.addChild(fill);
         
-        // Ползунок
+        // Ползунок (белый круг)
         const slider = new PIXI.Graphics()
             .circle(0, 0, 20)
-            .fill({color: 0xFFFFFF});
+            .fill({color: 0xFFFFFF})
+            .stroke({width: 3, color: 0x333333});
         slider.x = width * ((initial - min) / (max - min));
         slider.y = height / 2;
         container.addChild(slider);
@@ -648,7 +713,7 @@ class BaseScene extends PIXI.Container {
         valueText.y = -20;
         container.addChild(valueText);
         
-        // Интерактивность
+        // Интерактивная область
         const hitArea = new PIXI.Graphics()
             .rect(-20, -20, width + 40, height + 40)
             .fill({color: 0xFFFFFF, alpha: 0.01});
@@ -1004,7 +1069,8 @@ class MainMenuScene extends BaseScene {
             const marketLvl = GAME_STATE.buildings.MARKET.level;
             const baseIncome = marketLvl * 50;
             const traderIncome = ((GAME_STATE.incomePerSecond * 3600) - baseIncome);
-            infoText = `Рынок дает пассивный базовый доход монетами (Coin) за свой уровень.\n\nТекущий уровень: ${marketLvl}\nБазовый доход: ${baseIncome}/час\nДоход от трейдеров: ${traderIncome.toFixed(0)}/час`;
+            const upkeep = GAME_STATE.upkeepPerHour || 0;
+            infoText = `Рынок дает пассивный базовый доход монетами (Coin) за свой уровень.\n\nТекущий уровень: ${marketLvl}\nБазовый доход: ${baseIncome}/час\nДоход от трейдеров: ${traderIncome.toFixed(0)}/час\nСодержание армии: ${upkeep.toFixed(1)}/час`;
         }
         else if(type === 'BANK') { 
             useTxt="Банк"; useCol=0x0000FF; useAct=()=>this.showInfoModal("Банк", `Текущий лимит Coin: ${GAME_STATE.storageCapacity.coin.toLocaleString()}`); 
@@ -1224,11 +1290,17 @@ class DefenseScene extends BaseScene {
         this.addChild(defenseInfo);
         this.defenseInfo = defenseInfo;
 
-        // Область прокрутки (Scroll View)
-        this.viewY = 190;
-        this.viewH = APP_HEIGHT - 280;
+        // Пустое пространство сверху
+        const spacer = new PIXI.Graphics().rect(0, 190, APP_WIDTH, 30).fill({color:0x000000, alpha:0});
+        this.addChild(spacer);
+
+        // Область прокрутки (Scroll View) - начинаем ниже
+        this.viewY = 220;
+        this.viewH = APP_HEIGHT - 300;
         this.scrollContent = new PIXI.Container();
-        this.scrollContent.y = 0;
+        // Помещаем scrollContent на ту же Y-координату, что и маска,
+        // чтобы внутренние дочерние элементы начинались с 0 внутри скролла.
+        this.scrollContent.y = this.viewY;
 
         // Маска для обрезания лишнего
         const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
@@ -1248,6 +1320,7 @@ class DefenseScene extends BaseScene {
         this.isDragging = false; this.lastY = 0;
         const inputBg = new PIXI.Graphics().rect(0,this.viewY,APP_WIDTH,this.viewH).fill({color:0x000000, alpha:0.01});
         inputBg.eventMode='static';
+        // Переносим inputBg наверх, чтобы он перехватывал тачи/драг события
         this.addChildAt(inputBg, 0);
 
         inputBg.on('pointerdown', (e)=>{ this.isDragging = true; this.lastY = e.global.y; });
@@ -1264,7 +1337,7 @@ class DefenseScene extends BaseScene {
     }
 
     clampScroll() {
-        if(this.scrollContent.y > 80) this.scrollContent.y = 80;
+        if(this.scrollContent.y > 100) this.scrollContent.y = 100;
         const contentHeight = (this._defenseContentHeight || 1000);
         const minY = Math.min(-contentHeight + this.viewH + 80, 0);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
@@ -1272,20 +1345,20 @@ class DefenseScene extends BaseScene {
 
     renderDefenseUnits() {
         this.scrollContent.removeChildren();
-        let y = 10;
+        let y = 0;
         
-        // Заголовок
+        // Заголовок внутри скролла
         const title = new PIXI.Text("РАЗМЕСТИТЕ ЮНИТЫ НА ОБОРОНУ", {fontFamily:'Arial', fontSize:24, fill:0xFFAAAA, fontWeight:'bold'});
         title.x = 20; title.y = y;
         this.scrollContent.addChild(title);
-        y += 40;
+        y += 50;
 
         // Панели для каждого типа юнита
         for(let key in UNIT_DATA) {
             const data = UNIT_DATA[key];
             const panel = this.createDefenseUnitPanel(key, data, y);
             this.scrollContent.addChild(panel);
-            y += 180;
+            y += 190; // Увеличил отступ между панелями
         }
 
         this._defenseContentHeight = y + 50;
@@ -1296,8 +1369,8 @@ class DefenseScene extends BaseScene {
         const p = new PIXI.Container();
         p.x = 10; p.y = y;
 
-        // Фон карточки
-        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, 170, 10)
+        // Фон карточки - увеличенная высота
+        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, 180, 10)
             .fill({color: 0x222222, alpha:0.95})
             .stroke({width:2, color: 0xFF4444});
         p.addChild(bg);
@@ -1306,13 +1379,13 @@ class DefenseScene extends BaseScene {
         const iconAlias = data.icon || 'icon_power_cat';
         if(PIXI.Assets.cache.has(iconAlias)){
             const ic = PIXI.Sprite.from(iconAlias);
-            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=50;
+            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=60;
             p.addChild(ic);
         }
 
         // Название
         const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF, fontWeight:'bold'});
-        nameTxt.x=100; nameTxt.y=10; p.addChild(nameTxt);
+        nameTxt.x=100; nameTxt.y=15; p.addChild(nameTxt);
 
         // Доступно всего / На обороне
         const totalUnits = GAME_STATE.units[typeKey] || 0;
@@ -1321,11 +1394,11 @@ class DefenseScene extends BaseScene {
         
         const statsTxt = new PIXI.Text(`Всего: ${totalUnits} | На обороне: ${onDefense} | Свободно: ${available}`, 
             {fontFamily:'Arial', fontSize:14, fill:0xAAAAAA});
-        statsTxt.x=100; statsTxt.y=40; p.addChild(statsTxt);
+        statsTxt.x=100; statsTxt.y=45; p.addChild(statsTxt);
 
         // Сила
         const powerInfo = new PIXI.Text(`Мощь: +${tier.power || 0}`, {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
-        powerInfo.x=100; powerInfo.y=65; p.addChild(powerInfo);
+        powerInfo.x=100; powerInfo.y=70; p.addChild(powerInfo);
 
         // Слайдер для выбора количества
         const maxToPlace = Math.min(available, GAME_STATE.maxDefenseUnits - 
@@ -1337,13 +1410,13 @@ class DefenseScene extends BaseScene {
             countText.text = `Выбрано: ${value}`;
         });
         slider.x = 100;
-        slider.y = 90;
+        slider.y = 95;
         p.addChild(slider);
         p.slider = slider;
 
         // Текст выбранного количества
         const countText = new PIXI.Text(`Выбрано: 0`, {fontFamily:'Arial', fontSize:14, fill:0xFFD700});
-        countText.x = 320; countText.y = 90;
+        countText.x = 320; countText.y = 95;
         p.addChild(countText);
         p.countText = countText;
 
@@ -1363,13 +1436,15 @@ class DefenseScene extends BaseScene {
                     // Обновляем UI
                     this.updateDefenseInfo();
                     this.renderDefenseUnits();
+                    this.updateTotalPower(); // Обновляем общую мощь
+                    updateGameCalculations(); // Обновляем расчет содержания
                     saveGame(); // Сохраняем прогресс
                 } else {
                     this.showInfoModal("Ошибка", `Превышен лимит защиты! Максимум: ${GAME_STATE.maxDefenseUnits}`);
                 }
             }
         }, 0xFF4444, 120, 40, 10);
-        placeBtn.x = APP_WIDTH - 80; placeBtn.y = 130;
+        placeBtn.x = APP_WIDTH - 80; placeBtn.y = 140;
         p.addChild(placeBtn);
 
         // Кнопка СНЯТЬ С ОБОРОНЫ
@@ -1382,10 +1457,12 @@ class DefenseScene extends BaseScene {
                 // Обновляем UI
                 this.updateDefenseInfo();
                 this.renderDefenseUnits();
+                this.updateTotalPower(); // Обновляем общую мощь
+                updateGameCalculations(); // Обновляем расчет содержания
                 saveGame(); // Сохраняем прогресс
             }
         }, 0x4444FF, 80, 30, 5);
-        removeBtn.x = APP_WIDTH - 180; removeBtn.y = 130;
+        removeBtn.x = APP_WIDTH - 180; removeBtn.y = 140;
         p.addChild(removeBtn);
 
         p.selectedCount = 0;
@@ -1398,9 +1475,6 @@ class DefenseScene extends BaseScene {
                            GAME_STATE.defenseUnits.AttackerCat + GAME_STATE.defenseUnits.EngineerCat;
         
         this.defenseInfo.text = `Уровень башни: ${defenseTower.level}\nЛимит защиты: ${totalDefense}/${GAME_STATE.maxDefenseUnits}`;
-        
-        // Обновляем общую силу
-        this.updateTotalPower();
     }
 }
 
@@ -1551,100 +1625,131 @@ class QuestsScene extends BaseScene {
 }
 
 // --- СЦЕНА: ГЕРОИ (HEROES) ---
+// --- СЦЕНА: ГЕРОИ (RPG PRO) ---
 class HeroesScene extends BaseScene {
-    constructor(manager) { super(manager); this.heroIndex = 0; }
+    constructor(manager) { super(manager); }
 
     init() {
         super.init();
         this.addBackgroundCover('fon_academy');
         this.addTopUI();
 
-        const title = new PIXI.Text("ВАШИ ГЕРОИ", {fontFamily:'Arial', fontSize:36, fill:0xFFFFFF, fontWeight:'bold'});
-        title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
+        const title = new PIXI.Text("ГЛАВНОКОМАНДУЮЩИЙ", {fontFamily:'Arial', fontSize:32, fill:0xFFD700, fontWeight:'bold', stroke:0x000000, strokeThickness:4});
+        title.anchor.set(0.5); title.position.set(APP_WIDTH/2, 120);
         this.addChild(title);
 
-        this.heroes = [
-            { name: "Scout Commander", icon: "icon_power_cat", desc: "Мастер разведки." },
-            { name: "Shadow Stalker", icon: "🐈‍⬛", desc: "Скрытный убийца (Coming Soon)." }
-        ];
+        const hero = GAME_STATE.hero;
+        // Лимит уровня героя зависит от Ратуши
+        const centerLvl = GAME_STATE.buildings.CENTER ? GAME_STATE.buildings.CENTER.level : 1;
+        const maxHeroLevel = centerLvl * 5; 
 
-        this.renderHeroDisplay();
+        // Аватар
+        const avatar = new PIXI.Graphics().circle(0,0,60).fill({color:0x444444}).stroke({width:4, color:0xFFD700});
+        avatar.position.set(APP_WIDTH/2, 220);
+        this.addChild(avatar);
+        
+        if(PIXI.Assets.cache.has(ASSETS.icon_power_cat.alias)) {
+            const icon = PIXI.Sprite.from(ASSETS.icon_power_cat.alias);
+            icon.anchor.set(0.5); icon.scale.set(0.15); icon.position.set(APP_WIDTH/2, 220);
+            this.addChild(icon);
+        }
 
-        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0xFFD700);
-        back.x = APP_WIDTH/2; back.y = APP_HEIGHT - 60;
+        // Текст уровня
+        const lvlTxt = new PIXI.Text(`Уровень ${hero.level} / ${maxHeroLevel}`, {fontFamily:'Arial', fontSize:24, fill:0xFFFFFF, fontWeight:'bold'});
+        lvlTxt.anchor.set(0.5); lvlTxt.position.set(APP_WIDTH/2, 300);
+        this.addChild(lvlTxt);
+        
+        if (hero.level >= maxHeroLevel) {
+            const warn = new PIXI.Text("(Лимит Ратуши! Улучши Town Hall)", {fontFamily:'Arial', fontSize:14, fill:0xFF4444});
+            warn.anchor.set(0.5); warn.position.set(APP_WIDTH/2, 325);
+            this.addChild(warn);
+        }
+
+        // Полоска опыта (XP Bar)
+        const barW = 400; const barH = 20;
+        const barBg = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW, barH, 10).fill({color:0x222222});
+        barBg.position.set(APP_WIDTH/2, 350);
+        
+        const pct = Math.min(1, hero.xp / hero.maxXp);
+        const barFill = new PIXI.Graphics().roundRect(-barW/2, -barH/2, barW * pct, barH, 10).fill({color:0x00AAFF});
+        barBg.addChild(barFill);
+        
+        const xpTxt = new PIXI.Text(`${hero.xp.toFixed(0)} / ${hero.maxXp} XP`, {fontFamily:'Arial', fontSize:14, fill:0xFFFFFF});
+        xpTxt.anchor.set(0.5);
+        barBg.addChild(xpTxt);
+        this.addChild(barBg);
+
+        // Очки навыков
+        const ptsTxt = new PIXI.Text(`Очки Навыков: ${hero.skillPoints}`, {fontFamily:'Arial', fontSize:20, fill:0x00FF00, fontWeight:'bold'});
+        ptsTxt.anchor.set(0.5); ptsTxt.position.set(APP_WIDTH/2, 400);
+        this.addChild(ptsTxt);
+
+        // Статы
+        this.createStatRow("СИЛА (+Power)", hero.stats.str, 450, 'str');
+        this.createStatRow("ХАРИЗМА (+Unit Limit)", hero.stats.cha, 520, 'cha');
+        this.createStatRow("ИНТЕЛЛЕКТ (+XP Gain)", hero.stats.int, 590, 'int');
+
+        // КНОПКА ТРЕНИРОВКИ (Получение опыта за рыбу)
+        // Формула: 50 базового опыта + (Интеллект * 5)
+        const xpGain = 50 + (hero.stats.int * 5); 
+        const fishCost = 200;
+
+        const trainBtn = this.createSimpleButton(`ТРЕНИРОВАТЬСЯ (${fishCost} Fish)`, () => {
+             if (hero.level >= maxHeroLevel) {
+                 this.showInfoModal("Лимит", "Уровень героя ограничен уровнем Ратуши!");
+                 return;
+             }
+             if (GAME_STATE.resources.fish >= fishCost) {
+                 GAME_STATE.resources.fish -= fishCost;
+                 this.addXp(xpGain);
+                 this.init(); // Перерисовка
+                 this.addTopUI(); // Обновление UI
+                 saveGame();
+             } else {
+                 this.showInfoModal("Ошибка", "Не хватает рыбы!");
+             }
+        }, 0xFF8C00, 320, 60);
+        trainBtn.position.set(APP_WIDTH/2, 700);
+        this.addChild(trainBtn);
+
+        const back = this.createSimpleButton("Назад", ()=>this.manager.changeScene(MainMenuScene), 0x555555);
+        back.position.set(APP_WIDTH/2, APP_HEIGHT - 80);
         this.addChild(back);
     }
 
-    renderHeroDisplay() {
-        if(this.heroContainer) this.heroContainer.destroy({children:true});
-        this.heroContainer = new PIXI.Container();
-        this.heroContainer.y = 150;
-        this.addChild(this.heroContainer);
-
-        const hero = this.heroes[this.heroIndex];
-
-        // Панель характеристик сверху
-        const statsPanel = new PIXI.Graphics().roundRect(APP_WIDTH/2 - 250, 0, 500, 120, 20)
-            .fill({color:0x000000, alpha:0.8}).stroke({width:2, color:0xFFD700});
-        this.heroContainer.addChild(statsPanel);
+    createStatRow(label, val, y, statKey) {
+        const row = new PIXI.Container();
+        row.y = y; row.x = APP_WIDTH/2 - 150;
         
-        const hName = new PIXI.Text(hero.name, {fontFamily:'Arial', fontSize:28, fill:0xFFD700, fontWeight:'bold'});
-        hName.anchor.set(0.5); hName.x = APP_WIDTH/2; hName.y = 30;
-        this.heroContainer.addChild(hName);
-
-        const hDesc = new PIXI.Text(hero.desc, {fontFamily:'Arial', fontSize:18, fill:0xAAAAAA});
-        hDesc.anchor.set(0.5); hDesc.x = APP_WIDTH/2; hDesc.y = 65;
-        this.heroContainer.addChild(hDesc);
-
-        // Заглушка текста
-        const devText = new PIXI.Text("В РАЗРАБОТКЕ", {fontFamily:'Arial', fontSize:24, fill:0xFF0000, fontWeight:'bold'});
-        devText.anchor.set(0.5); devText.x = APP_WIDTH/2; devText.y = 95;
-        this.heroContainer.addChild(devText);
-
-        // Большая картинка героя (заглушка)
-        const heroVisual = new PIXI.Container();
-        heroVisual.x = APP_WIDTH/2; heroVisual.y = 400;
-        this.heroContainer.addChild(heroVisual);
-
-        // Круг за героем
-        const halo = new PIXI.Graphics().circle(0,0, 200).fill({color:0x222222}).stroke({width:5, color:0x00FFFF});
-        heroVisual.addChild(halo);
-
-        if(hero.icon === "icon_power_cat") {
-             if(PIXI.Assets.cache.has(hero.icon)) {
-                const sp = PIXI.Sprite.from(hero.icon);
-                sp.anchor.set(0.5); sp.scale.set(0.2); 
-                heroVisual.addChild(sp);
-             }
-        } else {
-            const txtIcon = new PIXI.Text(hero.icon, {fontSize:150});
-            txtIcon.anchor.set(0.5);
-            heroVisual.addChild(txtIcon);
+        const txt = new PIXI.Text(`${label}: ${val}`, {fontFamily:'Arial', fontSize:20, fill:0xFFFFFF});
+        txt.y = 10;
+        row.addChild(txt);
+        
+        // Кнопка плюсика (если есть очки)
+        if (GAME_STATE.hero.skillPoints > 0) {
+            const plus = this.createSimpleButton("+", () => {
+                if(GAME_STATE.hero.skillPoints > 0) {
+                    GAME_STATE.hero.skillPoints--;
+                    GAME_STATE.hero.stats[statKey]++;
+                    saveGame();
+                    this.init();
+                }
+            }, 0x00FF00, 50, 40, 5);
+            plus.x = 280; plus.y = 20;
+            row.addChild(plus);
         }
-
-        // СТРЕЛКИ
-        if(this.heroes.length > 1) {
-            // Левая
-            const leftArr = new PIXI.Text("◀", {fontSize:60, fill:0xFFFFFF});
-            leftArr.anchor.set(0.5); leftArr.x = 60; leftArr.y = 400;
-            leftArr.eventMode='static'; leftArr.cursor='pointer';
-            leftArr.on('pointertap', ()=>{
-                this.heroIndex--;
-                if(this.heroIndex < 0) this.heroIndex = this.heroes.length-1;
-                this.renderHeroDisplay();
-            });
-            this.heroContainer.addChild(leftArr);
-
-            // Правая
-            const rightArr = new PIXI.Text("▶", {fontSize:60, fill:0xFFFFFF});
-            rightArr.anchor.set(0.5); rightArr.x = APP_WIDTH - 60; rightArr.y = 400;
-            rightArr.eventMode='static'; rightArr.cursor='pointer';
-            rightArr.on('pointertap', ()=>{
-                this.heroIndex++;
-                if(this.heroIndex >= this.heroes.length) this.heroIndex = 0;
-                this.renderHeroDisplay();
-            });
-            this.heroContainer.addChild(rightArr);
+        this.addChild(row);
+    }
+    
+    addXp(amount) {
+        const hero = GAME_STATE.hero;
+        hero.xp += amount;
+        if(hero.xp >= hero.maxXp) {
+            hero.xp -= hero.maxXp;
+            hero.level++;
+            hero.skillPoints++;
+            hero.maxXp = Math.floor(hero.maxXp * 1.5);
+            this.showInfoModal("LEVEL UP!", `Герой достиг ${hero.level} уровня!`);
         }
     }
 }
@@ -1661,7 +1766,7 @@ class CryptoLabScene extends BaseScene {
         this.viewY = 80;
         this.viewH = APP_HEIGHT - 140;
         this.scrollContent = new PIXI.Container();
-        this.scrollContent.y = 0;
+        this.scrollContent.y = this.viewY;
 
         // Маска и контейнер
         const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
@@ -1864,7 +1969,6 @@ class CryptoLabScene extends BaseScene {
     }
 }
 
-
 class MarketScene extends BaseScene {
     constructor(manager) { super(manager); }
 
@@ -1879,7 +1983,11 @@ class MarketScene extends BaseScene {
         
         const marketLvl = GAME_STATE.buildings.MARKET.level;
         const baseIncome = marketLvl * 50;
-        const infoBase = new PIXI.Text(`Базовый доход Рынка (Lv.${marketLvl}): +${baseIncome}/час`, {fontFamily:'Arial', fontSize:22, fill:0x00FF00, fontWeight:'bold'});
+        const upkeep = GAME_STATE.upkeepPerHour || 0;
+        const netIncome = (GAME_STATE.incomePerSecond * 3600) - upkeep;
+        
+        const infoBase = new PIXI.Text(`Базовый доход Рынка (Lv.${marketLvl}): +${baseIncome}/час\nЧистый доход: ${netIncome >= 0 ? '+' : ''}${netIncome.toFixed(0)}/час`, 
+            {fontFamily:'Arial', fontSize:20, fill: netIncome >= 0 ? 0x00FF00 : 0xFF4444, fontWeight:'bold'});
         infoBase.anchor.set(0.5); infoBase.x = APP_WIDTH/2; infoBase.y = 170;
         this.addChild(infoBase);
 
@@ -1968,24 +2076,31 @@ class AcademyScene extends BaseScene {
         title.anchor.set(0.5); title.x = APP_WIDTH/2; title.y = 110;
         this.addChild(title);
 
-        // Получаем текущий лимит юнитов
+      // Получаем текущий лимит юнитов
         const academyLevel = GAME_STATE.buildings.ACADEMY.level;
-        const unitLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+        const baseLimit = ACADEMY_UNIT_LIMITS[academyLevel] || ACADEMY_UNIT_LIMITS[1];
+        
+        // --- НОВОЕ: Бонус Харизмы (1 CHA = +10 мест) ---
+        const charismaBonus = (GAME_STATE.hero ? GAME_STATE.hero.stats.cha * 10 : 0);
+        const unitLimit = baseLimit + charismaBonus;
+
         const currentUnits = Object.values(GAME_STATE.units).reduce((a, b) => a + b, 0);
         
         // Информация о лимите
-        const limitInfo = new PIXI.Text(`Лимит юнитов: ${currentUnits}/${unitLimit} (Уровень Академии: ${academyLevel})`, 
+        const limitInfo = new PIXI.Text(`Лимит юнитов: ${currentUnits}/${unitLimit} (Lv.${academyLevel} + Герой:${charismaBonus})`, 
             {fontFamily:'Arial', fontSize:18, fill: currentUnits >= unitLimit ? 0xFF4444 : 0x00FF00, fontWeight:'bold'});
-        limitInfo.anchor.set(0.5); limitInfo.x = APP_WIDTH/2; limitInfo.y = 150;
-        this.addChild(limitInfo);
         
         this.limitInfoText = limitInfo;
 
-        // Область прокрутки (Scroll View) - ИСПРАВЛЕНО: смещаем вниз чтобы первый юнит был виден
-        this.viewY = 180;
-        this.viewH = APP_HEIGHT - 260;
+        // Пустое пространство сверху
+        const spacer = new PIXI.Graphics().rect(0, 180, APP_WIDTH, 30).fill({color:0x000000, alpha:0});
+        this.addChild(spacer);
+
+        // Область прокрутки (Scroll View) - начинаем ниже
+        this.viewY = 210;
+        this.viewH = APP_HEIGHT - 290;
         this.scrollContent = new PIXI.Container();
-        this.scrollContent.y = 0;
+        this.scrollContent.y = this.viewY;
 
         // Маска для обрезания лишнего
         const mask = new PIXI.Graphics().rect(0, this.viewY, APP_WIDTH, this.viewH).fill(0xFFFFFF);
@@ -2030,17 +2145,17 @@ class AcademyScene extends BaseScene {
         super.destroy(opt);
     }
 
-    // Ограничение прокрутки, чтобы не улетало далеко - ИСПРАВЛЕНО
+    // Ограничение прокрутки
     clampScroll() {
         if(this.scrollContent.y > 100) this.scrollContent.y = 100;
         const contentHeight = (this._academyContentHeight || 1000);
-        const minY = Math.min(-contentHeight + this.viewH + 80, 0); // Было -50, исправлено на 0
+        const minY = Math.min(-contentHeight + this.viewH + 80, 0);
         if(this.scrollContent.y < minY) this.scrollContent.y = minY;
     }
 
     renderUnitsInScroll() {
         this.scrollContent.removeChildren();
-        let y = 10;
+        let y = 0;
         
         // --- ЗАГОЛОВОК TIER 1 ---
         const t1Title = new PIXI.Text("TIER 1 - НОВИЧКИ", {fontFamily:'Arial', fontSize:24, fill:0xAAAAAA, fontWeight:'bold'});
@@ -2054,7 +2169,7 @@ class AcademyScene extends BaseScene {
             // Создаем панель T1 (locked = false)
             const p = this._createUnitPanel(key, data, y, false);
             this.scrollContent.addChild(p);
-            y += 180; // высота панели + отступ
+            y += 220; // Увеличил высоту отступа между панелями
         }
 
         y += 30; // Большой отступ между Тирами
@@ -2073,20 +2188,20 @@ class AcademyScene extends BaseScene {
             const dummyData = { T1: data.T2, icon: data.icon };
             const locked = this._createUnitPanel(key, dummyData, y, true);
             this.scrollContent.addChild(locked);
-            y += 160;
+            y += 180;
         }
 
         this._academyContentHeight = y + 50;
     }
 
-    // Создание одной карточки юнита - ДОБАВЛЕН СЛАЙДЕР
+    // Создание одной карточки юнита - ИСПРАВЛЕНО: увеличен размер панелей
     _createUnitPanel(typeKey, data, y, locked=false) {
         const tier = data.T1; // Берем данные (имя, цена, сила)
         const p = new PIXI.Container();
         p.x = 10; p.y = y;
 
-        // Фон карточки
-        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, locked ? 140 : 200, 10)
+        // Фон карточки - увеличенная высота
+        const bg = new PIXI.Graphics().roundRect(0,0, APP_WIDTH-20, locked ? 160 : 210, 10)
             .fill({color: locked ? 0x151515 : 0x222222, alpha:0.95})
             .stroke({width:2, color: locked ? 0x333333 : 0x555555});
         p.addChild(bg);
@@ -2095,23 +2210,28 @@ class AcademyScene extends BaseScene {
         const iconAlias = data.icon || 'icon_power_cat';
         if(PIXI.Assets.cache.has(iconAlias)){
             const ic = PIXI.Sprite.from(iconAlias);
-            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=50;
+            ic.anchor.set(0.5); ic.scale.set(0.07); ic.x=50; ic.y=60;
             p.addChild(ic);
         }
 
         // Название
         const nameTxt = new PIXI.Text(tier.name, {fontFamily:'Arial', fontSize:20, fill: locked ? 0x777777 : 0xFFFFFF, fontWeight:'bold'});
-        nameTxt.x=100; nameTxt.y=10; p.addChild(nameTxt);
+        nameTxt.x=100; nameTxt.y=15; p.addChild(nameTxt);
 
         // Цена за ОДНОГО (только монеты)
         const singleCost = tier.cost.coin || 0;
         const costTxt = `${singleCost.toLocaleString()} Coin`;
         const cost = new PIXI.Text(`Цена: ${costTxt}`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0xFFD700});
-        cost.x=100; cost.y=40; p.addChild(cost);
+        cost.x=100; cost.y=45; p.addChild(cost);
 
         // Сила
         const powerInfo = new PIXI.Text(`Мощь: +${tier.power || 0}`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0x00FFFF});
-        powerInfo.x=100; powerInfo.y=65; p.addChild(powerInfo);
+        powerInfo.x=100; powerInfo.y=70; p.addChild(powerInfo);
+
+        // Содержание в час
+        const upkeep = tier.upkeep || 0;
+        const upkeepText = new PIXI.Text(`Содержание: ${upkeep.toFixed(1)}/ч`, {fontFamily:'Arial', fontSize:14, fill: locked ? 0x666666 : 0xFF5555});
+        upkeepText.x=100; upkeepText.y=95; p.addChild(upkeepText);
 
         if(!locked) {
             // -- Если открыто (T1) --
@@ -2129,9 +2249,10 @@ class AcademyScene extends BaseScene {
                 count = value;
                 p.selectedCount = value;
                 totalCostLabel.text = `Всего: ${singleCost * value} Coin`;
+                if (p.countNearBtn) p.countNearBtn.text = `x${value}`;
             });
             slider.x = 100;
-            slider.y = 90;
+            slider.y = 120;
             p.addChild(slider);
             p.slider = slider;
             p.selectedCount = 1;
@@ -2139,7 +2260,7 @@ class AcademyScene extends BaseScene {
             // Отображение общей стоимости
             const totalCostLabel = new PIXI.Text(`Всего: ${singleCost} Coin`, 
                 {fontFamily:'Arial', fontSize:14, fill:0xFFD700});
-            totalCostLabel.x = 350; totalCostLabel.y = 90;
+            totalCostLabel.x = 350; totalCostLabel.y = 120;
             p.addChild(totalCostLabel);
             p.totalCostLabel = totalCostLabel;
 
@@ -2161,13 +2282,21 @@ class AcademyScene extends BaseScene {
                 count = 1;
                 p.selectedCount = 1;
                 totalCostLabel.text = `Всего: ${singleCost} Coin`;
+                if (p.countNearBtn) p.countNearBtn.text = `x${p.selectedCount}`;
             }, 0x00FF00, 120, 40, 10);
-            hireBtn.x = APP_WIDTH - 80; hireBtn.y = 160;
+            hireBtn.x = APP_WIDTH - 80; hireBtn.y = 170;
             p.addChild(hireBtn);
+
+            // Показываем выбранное количество рядом с кнопкой НАЙМ
+            const countNearBtn = new PIXI.Text(`x${p.selectedCount}`, {fontFamily:'Arial', fontSize:16, fill:0xFFFFFF, fontWeight:'bold'});
+            countNearBtn.anchor.set(1, 0.5);
+            countNearBtn.x = APP_WIDTH - 100; countNearBtn.y = 170;
+            p.countNearBtn = countNearBtn;
+            p.addChild(countNearBtn);
 
             // Прогресс бар
             const barContainer = new PIXI.Container();
-            barContainer.position.set(100, 185);
+            barContainer.position.set(100, 195);
             p.addChild(barContainer);
             const barBg = new PIXI.Graphics().rect(0, 0, 300, 10).fill(0x000000);
             barContainer.addChild(barBg);
@@ -2175,18 +2304,18 @@ class AcademyScene extends BaseScene {
             barFill.width = 0;
             barContainer.addChild(barFill);
             const qLbl = new PIXI.Text("", {fontFamily:'Arial', fontSize:14, fill:0x00FFFF});
-            qLbl.x = 100; qLbl.y = 165;
+            qLbl.x = 100; qLbl.y = 175;
             p.addChild(qLbl);
 
             this.unitPanels.push({ type: typeKey, bar: barFill, qLabel: qLbl });
         } else {
             // -- Если закрыто (T2) --
             const lock = new PIXI.Text("🔒", {fontSize:28});
-            lock.anchor.set(0.5); lock.x = APP_WIDTH - 80; lock.y = 50;
+            lock.anchor.set(0.5); lock.x = APP_WIDTH - 80; lock.y = 60;
             p.addChild(lock);
 
             const dev = new PIXI.Text("Нужен Tier 2", {fontFamily:'Arial', fontSize:16, fill:0xFF5555, fontWeight:'bold'});
-            dev.anchor.set(0.5); dev.x = APP_WIDTH/2 - 20; dev.y = 90;
+            dev.anchor.set(0.5); dev.x = APP_WIDTH/2 - 20; dev.y = 110;
             p.addChild(dev);
         }
 
@@ -2270,6 +2399,7 @@ function gameTick() {
                 const done = q.shift();
                 GAME_STATE.units[done.type] = (GAME_STATE.units[done.type] || 0) + 1;
                 updated = true;
+                updateGameCalculations(); // Обновляем расчет содержания
                 saveGame(); // Сохраняем когда юнит готов
             }
         }
@@ -2316,15 +2446,17 @@ function gameTick() {
         }
     }
 
-    // Доход (с защитой от переполнения)
+    // Доход и содержание (с защитой от переполнения)
     if(now - GAME_STATE.lastIncomeTime >= 1000) {
-        if(GAME_STATE.incomePerSecond > 0) {
+        if(GAME_STATE.incomePerSecond > 0 || GAME_STATE.upkeepPerHour > 0) {
             const maxCoin = GAME_STATE.storageCapacity.coin || Infinity;
-            if(GAME_STATE.resources.coin < maxCoin) {
-                GAME_STATE.resources.coin = Math.min(
-                    GAME_STATE.resources.coin + GAME_STATE.incomePerSecond,
-                    maxCoin
-                );
+            // Чистый доход (доход минус содержание)
+            const netIncomePerSecond = GAME_STATE.incomePerSecond - (GAME_STATE.upkeepPerHour / 3600);
+            
+            if(netIncomePerSecond !== 0) {
+                const newCoin = GAME_STATE.resources.coin + netIncomePerSecond;
+                // Не позволяем уйти в минус из-за содержания
+                GAME_STATE.resources.coin = Math.max(0, Math.min(newCoin, maxCoin));
                 updated = true;
             }
         }
@@ -2344,6 +2476,32 @@ function gameTick() {
         lastSaveTime = now;
     }
 }
+
+    // Прелоадер ассетов с прогресс-колбэком (используется для заполнения кубиков на loading-screen)
+    function preloadAssetsWithProgress(assetArray, onProgress) {
+        return new Promise((resolve) => {
+            const urls = assetArray.map(a => a.src || (a && a.alias) || a).filter(Boolean);
+            const total = urls.length;
+            if (total === 0) { if(onProgress) onProgress(1); resolve(); return; }
+            let loaded = 0;
+            urls.forEach(u => {
+                try {
+                    const img = new Image();
+                    img.onload = img.onerror = () => {
+                        loaded++;
+                        if (onProgress) onProgress(loaded / total);
+                        if (loaded === total) resolve();
+                    };
+                    img.src = u;
+                } catch (e) {
+                    // В случае ошибки всё равно учитываем ресурс как "загруженный"
+                    loaded++;
+                    if (onProgress) onProgress(loaded / total);
+                    if (loaded === total) resolve();
+                }
+            });
+        });
+    }
 
 async function init() {
     console.log("Start Init");
@@ -2373,11 +2531,27 @@ async function init() {
     window.addEventListener('resize', resize);
     resize();
 
+    // Предзагрузка изображений чтобы показать прогресс (кубики)
     try {
-        await PIXI.Assets.load(Object.values(ASSETS));
+        const progressEl = document.getElementById('loading-progress');
+        const cubes = progressEl ? Array.from(progressEl.querySelectorAll('.cube')) : [];
+
+        await preloadAssetsWithProgress(Object.values(ASSETS), (p) => {
+            if (cubes.length) {
+                const filled = Math.round(p * cubes.length);
+                cubes.forEach((c, i) => c.classList.toggle('filled', i < filled));
+            }
+        });
+
+        // Затем даём PIXI зарегистрировать/зарузить ассеты (кэш браузера минимизирует повторную загрузку)
+        try {
+            await PIXI.Assets.load(Object.values(ASSETS));
+        } catch(e) {
+            console.error("Asset load error", e);
+            // Продолжаем даже если ассеты не загрузились
+        }
     } catch(e) {
-        console.error("Asset load error", e);
-        // Продолжаем даже если ассеты не загрузились
+        console.warn('Preload error:', e);
     }
 
     SceneManager = new SceneController(app);
@@ -2387,6 +2561,16 @@ async function init() {
     updateGameCalculations();
     
     SceneManager.changeScene(MainMenuScene);
+    // Скрываем DOM-экран загрузки (если он есть)
+    try {
+        const loaderEl = document.getElementById('loading-screen');
+        if (loaderEl) {
+            loaderEl.style.display = 'none';
+            // loaderEl.remove(); // можно полностью удалить элемент при желании
+        }
+    } catch (e) {
+        console.warn('Не удалось скрыть loading-screen:', e);
+    }
     
     app.ticker.add(gameTick);
 }
