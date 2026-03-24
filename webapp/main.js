@@ -1644,7 +1644,16 @@ class MainMenuScene extends BaseScene {
                 g.eventMode='static'; g.cursor='pointer';
                 g.on('pointertap', (e) => {
                     e.stopPropagation();
+                    this.closeMenu(); // закрыть меню если открыто
                     this.tryBuild(type);
+                });
+                
+                // Блокируем hover-меню на пустом фундаменте
+                g.on('pointerover', (e) => {
+                    e.stopPropagation();
+                });
+                g.on('pointerout', (e) => {
+                    e.stopPropagation();
                 });
 
                 if(bData.isConstructing) {
