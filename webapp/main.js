@@ -1586,19 +1586,21 @@ class MainMenuScene extends BaseScene {
                     const desiredPx = (vis.heightTiles || 1.6) * TILE_SIZE;
                     const texH = (sp.texture && sp.texture.orig && sp.texture.orig.height) ? sp.texture.orig.height : (sp.height || desiredPx);
                     let newScale = desiredPx / texH;
-                    // ограничим, чтобы не было слишком большим
-                    newScale = Math.max(0.3, Math.min(4.0, newScale));
+                    // ограничим, чтобы не было слишком большим (для обеих платформ)
+                    newScale = Math.max(0.3, Math.min(2.5, newScale));
                     sp.scale.set(newScale);
                 } catch(_) {
                     sp.scale.set(1);
                 }
 
                 sp.eventMode='static'; sp.cursor='pointer';
-                sp.on('pointertap', (e)=>{ 
+                sp.on('pointerover', (e)=>{ 
                     e.stopPropagation();
-                    // если перед этим был свайп — игнорируем этот тап
-                    if(this.hasMoved) { this.hasMoved = false; return; }
                     this.openMenu(cont, type); 
+                });
+                sp.on('pointerout', (e)=>{ 
+                    e.stopPropagation();
+                    this.closeMenu();
                 });
                 cont.addChild(sp);
                 // debug log
@@ -1833,7 +1835,11 @@ class MainMenuScene extends BaseScene {
         // ensure modal is above everything
         try { m.zIndex = 10000; } catch(_) {}
         // suppress immediate close triggered by scene pointertap (workaround for event ordering)
-        this._suppressCloseUntil = Date.now() + 300;
+        this._suppressCloseUntil = Date.now() + 100;
+        // добавим hover-обработчик на меню, чтобы оно не закрывалось при hover
+        m.eventMode = 'static';
+        m.on('pointerover', ()=>{ if(this.activeMenuHoverTimer) clearTimeout(this.activeMenuHoverTimer); });
+        m.on('pointerout', ()=>{ this.activeMenuHoverTimer = setTimeout(()=>this.closeMenu(), 200); });
         this.activeMenu = { container: m, type: type, upLabel: null };
 
         const upBtn = this.createPentagon("UP", 0xFFA500, ()=>{
