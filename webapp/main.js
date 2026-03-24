@@ -1586,8 +1586,8 @@ class MainMenuScene extends BaseScene {
                     const desiredPx = (vis.heightTiles || 1.6) * TILE_SIZE;
                     const texH = (sp.texture && sp.texture.orig && sp.texture.orig.height) ? sp.texture.orig.height : (sp.height || desiredPx);
                     let newScale = desiredPx / texH;
-                    // ограничим, чтобы не было слишком большим (для обеих платформ)
-                    newScale = Math.max(0.3, Math.min(2.5, newScale));
+                    // ограничим жестче, для обеих платформ (локальная и Render)
+                    newScale = Math.max(0.2, Math.min(1.5, newScale));
                     sp.scale.set(newScale);
                 } catch(_) {
                     sp.scale.set(1);
