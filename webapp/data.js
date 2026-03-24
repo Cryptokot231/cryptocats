@@ -38,7 +38,7 @@ const UNIT_DATA = {
     },
     AttackerCat: {
         type: 'AttackerCat',
-        icon: 'icon_res_gem',
+        icon: 'fliper-t1',
         T1: { name: 'Attacker T1', cost: { coin: 100 }, time: 5, power: 25, upkeep: 0.2 }, 
         T2: { name: 'Attacker T2', cost: { coin: 1000 }, time: 12, power: 125, upkeep: 0.4 }, 
         T3: { name: 'Attacker T3', cost: { coin: 5000 }, time: 40, power: 600, upkeep: 1.0 }, 
