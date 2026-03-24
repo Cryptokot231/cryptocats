@@ -1607,8 +1607,8 @@ class MainMenuScene extends BaseScene {
                 try { console.log('renderBuildings: added', type, 'map=', bData.mapX, bData.mapY, 'pos=', {x:cont.x,y:cont.y}, 'scale=', sp.scale.x); } catch(_) {}
             } else {
                 // --- 3D "ПЛИТКА" (ФУНДАМЕНТ) ---
-                const w = 150 * scale * 2.5; 
-                const h = 150 * scale * 2.5;
+                const w = 150 * scale * 1.0; 
+                const h = 150 * scale * 1.0;
                 
                 const g = new PIXI.Graphics();
                 
